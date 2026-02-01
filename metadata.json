@@ -1,0 +1,8 @@
+
+{
+  "name": "MIST | Mobile Intensive Services Team - Portal",
+  "description": "Enterprise-grade timesheet and service management system for MIST NDIS providers, featuring role-based access, automated rate calculations, and service auditing.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
