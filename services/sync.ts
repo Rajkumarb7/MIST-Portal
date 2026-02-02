@@ -68,54 +68,52 @@ export const syncService = {
   syncAllData: async (webhookUrl: string, data: SyncData) => {
     if (!webhookUrl) throw new Error("Webhook URL not configured");
 
-    return new Promise((resolve, reject) => {
-      try {
-        const payload = {
-          timestamp: new Date().toISOString(),
-          type: 'FULL_SYNC',
-          timesheets: data.timesheets,
-          staff: data.staff,
-          clients: data.clients
-        };
+    return new Promise((resolve) => {
+      const payload = {
+        timestamp: new Date().toISOString(),
+        type: 'FULL_SYNC',
+        timesheets: data.timesheets,
+        staff: data.staff,
+        clients: data.clients
+      };
 
-        // Create hidden iframe for form submission (bypasses CORS)
-        const iframeName = 'mist_sync_frame_' + Date.now();
-        const iframe = document.createElement('iframe');
-        iframe.name = iframeName;
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
+      // Create hidden iframe for form submission (bypasses CORS)
+      const iframeName = 'mist_sync_frame_' + Date.now();
+      const iframe = document.createElement('iframe');
+      iframe.name = iframeName;
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
 
-        // Create form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = webhookUrl;
-        form.target = iframeName;
-        form.style.display = 'none';
+      // Create form
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = webhookUrl;
+      form.target = iframeName;
+      form.style.display = 'none';
 
-        // Add data as hidden input
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'data';
-        input.value = JSON.stringify(payload);
-        form.appendChild(input);
+      // Add data as hidden input
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'data';
+      input.value = JSON.stringify(payload);
+      form.appendChild(input);
 
-        document.body.appendChild(form);
+      document.body.appendChild(form);
 
-        // Clean up after submission
-        iframe.onload = () => {
-          setTimeout(() => {
-            document.body.removeChild(form);
-            document.body.removeChild(iframe);
-          }, 1000);
-          resolve(true);
-        };
+      // Submit form
+      form.submit();
 
-        // Submit form
-        form.submit();
-      } catch (error) {
-        console.error("Full sync failed:", error);
-        reject(error);
-      }
+      // With cross-origin iframes, we can't detect completion
+      // So we assume success after a short delay and clean up
+      setTimeout(() => {
+        try {
+          if (document.body.contains(form)) document.body.removeChild(form);
+          if (document.body.contains(iframe)) document.body.removeChild(iframe);
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        resolve(true);
+      }, 1500);
     });
   },
 

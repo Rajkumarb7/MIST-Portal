@@ -233,12 +233,12 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
       </div>
 
       {isAdding && (
-        <form onSubmit={handleAdd} className="bg-white dark:bg-slate-900 p-8 lg:p-10 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-200">
-          <h3 className="text-xl font-black mb-8 flex items-center gap-3 text-mistNavy dark:text-white">
-            <Calendar className="text-mistTeal" /> Support Worker Shift Log
+        <form onSubmit={handleAdd} className="bg-white dark:bg-slate-900 p-4 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-200">
+          <h3 className="text-lg sm:text-xl font-black mb-6 sm:mb-8 flex items-center gap-3 text-mistNavy dark:text-white">
+            <Calendar className="text-mistTeal" size={20} /> Support Worker Shift Log
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Date */}
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</label>
@@ -361,11 +361,11 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
       )}
 
       {/* Entries Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-[2rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
+          <table className="w-full text-left min-w-[800px]">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+              <tr className="bg-slate-50 dark:bg-slate-800/50 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
                 <th className="px-6 py-5">Date</th>
                 <th className="px-6 py-5">Client</th>
                 {user.role === UserRole.MANAGER && <th className="px-6 py-5">Worker</th>}
