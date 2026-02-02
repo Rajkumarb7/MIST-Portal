@@ -140,10 +140,18 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
 
     setIsSyncing(true);
     try {
-      await syncService.syncToGoogleSheets(webhookUrl, filtered);
+      // Get all data from localStorage for full sync
+      const allStaff = JSON.parse(localStorage.getItem('mist_staff') || '[]');
+      const allClients = JSON.parse(localStorage.getItem('mist_clients') || '[]');
+
+      await syncService.syncAllData(webhookUrl, {
+        timesheets: entries,
+        staff: allStaff,
+        clients: allClients
+      });
       const updated = entries.map(e => ({ ...e, syncedToCloud: true }));
       onUpdate(updated);
-      alert("MIST Cloud Sync Successful.");
+      alert("MIST Cloud Sync Successful! Check your Google Sheet.");
     } catch (err) {
       alert("Sync failed. Check settings.");
     } finally {
