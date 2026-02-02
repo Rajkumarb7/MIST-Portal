@@ -1,9 +1,10 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { User, UserRole, TimesheetEntry, Client, Staff } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-// Added MapPin to the lucide-react imports
-import { FileDown, Calendar, ArrowRight, MapPin } from 'lucide-react';
+import { FileDown, Calendar, ArrowRight, MapPin, X, Mail, FileSpreadsheet, Download } from 'lucide-react';
+import { exportToCSV } from '../utils/csvExport';
+import { syncService } from '../services/sync';
 
 interface ReportsProps {
   user: User;
@@ -13,12 +14,52 @@ interface ReportsProps {
 }
 
 const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState<string | null>(null);
+
   const filteredEntries = useMemo(() => {
     if (user.role === UserRole.MANAGER) return entries;
     if (user.role === UserRole.STAFF) return entries.filter(e => e.staffId === user.id);
     if (user.role === UserRole.CLIENT) return entries.filter(e => e.clientId === user.id);
     return [];
   }, [user, entries]);
+
+  const handleExportCSV = () => {
+    const exportData = filteredEntries.map(e => ({
+      Date: e.date,
+      Staff: e.staffName,
+      Client: e.clientName,
+      Service: e.serviceType,
+      'Start Time': e.startTime,
+      'End Time': e.endTime,
+      Hours: e.hours,
+      'Hourly Rate': e.hourlyRate,
+      KM: e.km,
+      'KM Rate': e.kmRate,
+      'Work Earnings': e.workEarnings,
+      'Travel Earnings': e.travelEarnings,
+      'Total Earnings': e.totalEarnings,
+      Status: e.status,
+      Notes: e.notes
+    }));
+    exportToCSV(exportData, `MIST_Report_${new Date().toISOString().split('T')[0]}`);
+    setExportSuccess('CSV file downloaded successfully!');
+    setTimeout(() => {
+      setExportSuccess(null);
+      setShowExportModal(false);
+    }, 2000);
+  };
+
+  const handleExportEmail = () => {
+    const adminEmail = 'admin@mistportal.com'; // Default admin email
+    const emailLink = syncService.generateEmailReport(adminEmail, filteredEntries);
+    window.location.href = emailLink;
+    setExportSuccess('Email client opened!');
+    setTimeout(() => {
+      setExportSuccess(null);
+      setShowExportModal(false);
+    }, 2000);
+  };
 
   const clientBreakdown = useMemo(() => {
     const data: Record<string, number> = {};
@@ -37,7 +78,10 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
           <h3 className="text-xl font-black">Financial Aggregates</h3>
           <p className="text-sm text-gray-500">Breakdown of earnings and distribution</p>
         </div>
-        <button className="px-5 py-2.5 bg-accent text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-accent/20">
+        <button
+          onClick={() => setShowExportModal(true)}
+          className="px-5 py-2.5 bg-accent text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors"
+        >
           <FileDown size={18} /> Export Full Report
         </button>
       </div>
@@ -132,6 +176,76 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
           </div>
         </div>
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-mistNavy/40 backdrop-blur-md">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden">
+            <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-accent text-white rounded-xl flex items-center justify-center">
+                  <Download size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black">Export Report</h3>
+                  <p className="text-xs text-slate-500">Choose export format</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-8 space-y-4">
+              {exportSuccess ? (
+                <div className="p-6 bg-success/10 text-success rounded-2xl text-center">
+                  <div className="w-12 h-12 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Download size={24} />
+                  </div>
+                  <p className="font-bold">{exportSuccess}</p>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={handleExportCSV}
+                    className="w-full p-5 bg-slate-50 dark:bg-slate-800 hover:bg-accent hover:text-white rounded-2xl flex items-center gap-4 transition-all group"
+                  >
+                    <div className="w-12 h-12 bg-success/10 group-hover:bg-white/20 rounded-xl flex items-center justify-center">
+                      <FileSpreadsheet size={24} className="text-success group-hover:text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold">Download CSV</p>
+                      <p className="text-xs text-slate-500 group-hover:text-white/70">Export as spreadsheet file</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={handleExportEmail}
+                    className="w-full p-5 bg-slate-50 dark:bg-slate-800 hover:bg-accent hover:text-white rounded-2xl flex items-center gap-4 transition-all group"
+                  >
+                    <div className="w-12 h-12 bg-accent/10 group-hover:bg-white/20 rounded-xl flex items-center justify-center">
+                      <Mail size={24} className="text-accent group-hover:text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold">Send via Email</p>
+                      <p className="text-xs text-slate-500 group-hover:text-white/70">Open in your email client</p>
+                    </div>
+                  </button>
+
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <p className="text-xs text-slate-400 text-center">
+                      Exporting {filteredEntries.length} timesheet entries
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
