@@ -69,21 +69,25 @@ export const syncService = {
     if (!webhookUrl) throw new Error("Webhook URL not configured");
 
     try {
-      // Use POST with text/plain to avoid CORS preflight
-      const payload = JSON.stringify({
+      const payload = {
         timestamp: new Date().toISOString(),
         type: 'FULL_SYNC',
         timesheets: data.timesheets,
         staff: data.staff,
         clients: data.clients
-      });
+      };
 
-      const response = await fetch(webhookUrl, {
+      // Use fetch with no-cors mode and form data for Google Apps Script compatibility
+      const formData = new FormData();
+      formData.append('data', JSON.stringify(payload));
+
+      await fetch(webhookUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: payload
+        mode: 'no-cors',
+        body: formData
       });
 
+      // With no-cors we can't read the response, but the request is sent
       return true;
     } catch (error) {
       console.error("Full sync failed:", error);
