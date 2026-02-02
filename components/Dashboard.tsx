@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { User, UserRole, TimesheetEntry, Client, Staff } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
-import { Clock, TrendingUp, DollarSign, MapPin, AlertCircle, CheckCircle, XCircle, Filter, Users, Briefcase } from 'lucide-react';
+import { Clock, TrendingUp, DollarSign, MapPin, AlertCircle, CheckCircle, XCircle, Filter, Users, Briefcase, Calendar } from 'lucide-react';
 
 interface DashboardProps {
   user: User;
@@ -12,10 +12,45 @@ interface DashboardProps {
   onUpdateEntries: (entries: TimesheetEntry[]) => void;
 }
 
+// Helper to get fortnight boundaries (assuming fortnights start on Monday)
+const getFortnightDates = (weeksBack: number = 0) => {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+  // Get this Monday
+  const thisMonday = new Date(now);
+  thisMonday.setDate(now.getDate() - daysToMonday);
+  thisMonday.setHours(0, 0, 0, 0);
+
+  // Determine which week of the fortnight we're in (even or odd week number)
+  const weekNumber = Math.floor((thisMonday.getTime() - new Date(thisMonday.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+  const isSecondWeekOfFortnight = weekNumber % 2 === 1;
+
+  // Calculate start of current fortnight
+  const fortnightStart = new Date(thisMonday);
+  if (isSecondWeekOfFortnight) {
+    fortnightStart.setDate(fortnightStart.getDate() - 7);
+  }
+
+  // Apply weeksBack offset (in fortnights)
+  fortnightStart.setDate(fortnightStart.getDate() - (weeksBack * 14));
+
+  const fortnightEnd = new Date(fortnightStart);
+  fortnightEnd.setDate(fortnightEnd.getDate() + 13);
+
+  return {
+    start: fortnightStart.toISOString().split('T')[0],
+    end: fortnightEnd.toISOString().split('T')[0]
+  };
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, onUpdateEntries }) => {
   const [filterStaff, setFilterStaff] = useState('');
   const [filterClient, setFilterClient] = useState('');
   const [dateRange, setDateRange] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   const filteredEntries = useMemo(() => {
     let result = entries;
@@ -36,7 +71,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
     }
 
     // Date range filter
-    if (dateRange !== 'all') {
+    if (dateRange === 'custom' && customStartDate && customEndDate) {
+      result = result.filter(e => e.date >= customStartDate && e.date <= customEndDate);
+    } else if (dateRange === 'fortnight') {
+      const { start, end } = getFortnightDates(0);
+      result = result.filter(e => e.date >= start && e.date <= end);
+    } else if (dateRange === 'lastfortnight') {
+      const { start, end } = getFortnightDates(1);
+      result = result.filter(e => e.date >= start && e.date <= end);
+    } else if (dateRange !== 'all') {
       const now = new Date();
       const daysAgo = dateRange === 'week' ? 7 : dateRange === 'month' ? 30 : 90;
       const cutoff = new Date(now.setDate(now.getDate() - daysAgo)).toISOString().split('T')[0];
@@ -44,7 +87,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
     }
 
     return result;
-  }, [user, entries, filterStaff, filterClient, dateRange]);
+  }, [user, entries, filterStaff, filterClient, dateRange, customStartDate, customEndDate]);
 
   const stats = useMemo(() => {
     const totalHours = filteredEntries.reduce((sum, e) => sum + e.hours, 0);
@@ -150,12 +193,37 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
             >
               <option value="all">All Time</option>
               <option value="week">Last 7 Days</option>
+              <option value="fortnight">Current Fortnight</option>
+              <option value="lastfortnight">Last Fortnight</option>
               <option value="month">Last 30 Days</option>
               <option value="quarter">Last 90 Days</option>
+              <option value="custom">Custom Range</option>
             </select>
+            {dateRange === 'custom' && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Calendar size={14} className="text-slate-400" />
+                  <input
+                    type="date"
+                    className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold border-0 outline-none"
+                    value={customStartDate}
+                    onChange={e => setCustomStartDate(e.target.value)}
+                    placeholder="Start"
+                  />
+                </div>
+                <span className="text-slate-400 text-sm">to</span>
+                <input
+                  type="date"
+                  className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold border-0 outline-none"
+                  value={customEndDate}
+                  onChange={e => setCustomEndDate(e.target.value)}
+                  placeholder="End"
+                />
+              </>
+            )}
             {(filterStaff || filterClient || dateRange !== 'all') && (
               <button
-                onClick={() => { setFilterStaff(''); setFilterClient(''); setDateRange('all'); }}
+                onClick={() => { setFilterStaff(''); setFilterClient(''); setDateRange('all'); setCustomStartDate(''); setCustomEndDate(''); }}
                 className="px-4 py-2 text-xs font-bold text-danger hover:bg-danger/10 rounded-xl"
               >
                 Clear Filters

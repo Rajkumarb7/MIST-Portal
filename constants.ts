@@ -12,6 +12,7 @@ export const SERVICE_TYPES = [
   { id: 'in-home-support', name: 'In-Home Support', icon: '🏠' },
   { id: 'sil-day', name: 'SIL Day', icon: '☀️' },
   { id: 'sil-night', name: 'SIL Night', icon: '🌙' },
+  { id: 'sil-sleepover', name: 'SIL Sleepover', icon: '😴' },
   { id: 'mental-health', name: 'Mental Health Support', icon: '🧠' },
   { id: 'recovery-coach', name: 'Psychosocial Recovery', icon: '🌱' },
   { id: 'mentoring', name: 'Youth Mentoring', icon: '🤝' },
@@ -21,7 +22,8 @@ export const SERVICE_TYPES = [
 export const SHIFT_TYPES = [
   { id: 'day', name: 'Day Shift', icon: '☀️' },
   { id: 'evening', name: 'Evening Shift', icon: '🌆' },
-  { id: 'night', name: 'Night Shift', icon: '🌙' }
+  { id: 'night', name: 'Night Shift', icon: '🌙' },
+  { id: 'sleepover', name: 'Sleepover (11PM-7AM)', icon: '😴' }
 ];
 
 export const STAFF_ROLES = [

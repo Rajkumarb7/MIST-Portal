@@ -51,7 +51,7 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
   };
 
   const handleExportEmail = () => {
-    const adminEmail = 'admin@mistportal.com'; // Default admin email
+    const adminEmail = 'admin@mistau.com'; // Default admin email
     const emailLink = syncService.generateEmailReport(adminEmail, filteredEntries);
     window.location.href = emailLink;
     setExportSuccess('Email client opened!');

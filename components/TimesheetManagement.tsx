@@ -60,6 +60,8 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
   const getHourlyRate = (client: Client, shift: string, dateStr: string) => {
     const date = new Date(dateStr);
     const day = date.getDay();
+    // Sleepover has a flat rate regardless of day
+    if (shift === 'sleepover') return client.rates.sleepover || 250;
     if (day === 0) return client.rates.sunday;
     if (day === 6) return client.rates.saturday;
     if (shift === 'night') return client.rates.night;
@@ -289,7 +291,15 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
               <select
                 className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-mistTeal outline-none font-bold appearance-none"
                 value={newEntry.shiftType}
-                onChange={e => setNewEntry({ ...newEntry, shiftType: e.target.value as 'day' | 'evening' | 'night' })}
+                onChange={e => {
+                  const shiftType = e.target.value as 'day' | 'evening' | 'night' | 'sleepover';
+                  // Auto-set times for sleepover (11 PM - 7 AM)
+                  if (shiftType === 'sleepover') {
+                    setNewEntry({ ...newEntry, shiftType, startTime: '23:00', endTime: '07:00' });
+                  } else {
+                    setNewEntry({ ...newEntry, shiftType });
+                  }
+                }}
               >
                 {SHIFT_TYPES.map(t => <option key={t.id} value={t.id}>{t.icon} {t.name}</option>)}
               </select>

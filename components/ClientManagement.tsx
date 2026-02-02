@@ -13,7 +13,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ clients, onUpdate }
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  const defaultRates: Rates = { day: 65, evening: 72, night: 85, saturday: 95, sunday: 125, publicHoliday: 160, km: 0.96 };
+  const defaultRates: Rates = { day: 65, evening: 72, night: 85, sleepover: 250, saturday: 95, sunday: 125, publicHoliday: 160, km: 0.96 };
   const [formData, setFormData] = useState<Partial<Client>>({ name: '', rates: defaultRates });
 
   const handleAddSubmit = (e: React.FormEvent) => {

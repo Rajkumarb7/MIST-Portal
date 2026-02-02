@@ -1,22 +1,26 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { User, UserRole, AuthState, Staff, Client, TimesheetEntry } from './types';
 import { storage } from './services/storage';
+import { syncService } from './services/sync';
 import { AUTH_CONFIG } from './constants';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Home, 
-  Clock, 
-  BarChart3, 
-  Settings as SettingsIcon, 
-  LogOut, 
-  Moon, 
+import {
+  LayoutDashboard,
+  Users,
+  Home,
+  Clock,
+  BarChart3,
+  Settings as SettingsIcon,
+  LogOut,
+  Moon,
   Sun,
   ShieldCheck,
   FileText,
   PieChart,
-  Activity
+  Activity,
+  Cloud,
+  CloudOff,
+  Loader2
 } from 'lucide-react';
 
 // Components
@@ -33,18 +37,53 @@ const App: React.FC = () => {
   const [authState, setAuthState] = useState<AuthState>({ user: null, isAuthenticated: false });
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState(storage.getTheme());
-  
+
   // App Data
   const [staff, setStaff] = useState<Staff[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
 
+  // Sync status
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+
+  // Get webhook URL from localStorage
+  const getWebhookUrl = useCallback(() => localStorage.getItem('mist_webhook_url'), []);
+
+  // Load initial data
   useEffect(() => {
     setStaff(storage.getStaff());
     setClients(storage.getClients());
     setEntries(storage.getEntries());
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  // Auto-sync when data changes
+  useEffect(() => {
+    const webhookUrl = getWebhookUrl();
+    if (!webhookUrl || (staff.length === 0 && clients.length === 0 && entries.length === 0)) {
+      return; // Don't sync if no webhook or no data
+    }
+
+    setSyncStatus('syncing');
+
+    // Use debounced auto-sync
+    const syncTimeout = setTimeout(async () => {
+      try {
+        await syncService.syncAllData(webhookUrl, { timesheets: entries, staff, clients });
+        setSyncStatus('synced');
+        setLastSyncTime(new Date().toLocaleTimeString());
+        // Reset to idle after 3 seconds
+        setTimeout(() => setSyncStatus('idle'), 3000);
+      } catch (error) {
+        console.error('Auto-sync failed:', error);
+        setSyncStatus('error');
+        setTimeout(() => setSyncStatus('idle'), 5000);
+      }
+    }, 2000); // 2 second debounce
+
+    return () => clearTimeout(syncTimeout);
+  }, [staff, clients, entries, getWebhookUrl]);
 
   const handleLogin = (role: UserRole, id: string, name: string) => {
     setAuthState({
@@ -146,8 +185,26 @@ const App: React.FC = () => {
               Current User: {authState.user?.name}
             </div>
           </div>
-          <div className="flex items-center gap-6">
-             <div className="hidden sm:flex items-center gap-3 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300">
+          <div className="flex items-center gap-4">
+            {/* Sync Status Indicator */}
+            {getWebhookUrl() && (
+              <div className={`hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                syncStatus === 'syncing' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' :
+                syncStatus === 'synced' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' :
+                syncStatus === 'error' ? 'bg-red-100 dark:bg-red-900/30 text-red-600' :
+                'bg-slate-100 dark:bg-slate-800 text-slate-500'
+              }`}>
+                {syncStatus === 'syncing' && <Loader2 size={14} className="animate-spin" />}
+                {syncStatus === 'synced' && <Cloud size={14} />}
+                {syncStatus === 'error' && <CloudOff size={14} />}
+                {syncStatus === 'idle' && <Cloud size={14} />}
+                {syncStatus === 'syncing' ? 'Syncing...' :
+                 syncStatus === 'synced' ? 'Synced' :
+                 syncStatus === 'error' ? 'Sync Error' :
+                 lastSyncTime ? `Last: ${lastSyncTime}` : 'Cloud Ready'}
+              </div>
+            )}
+            <div className="hidden sm:flex items-center gap-3 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300">
               <ShieldCheck size={16} className="text-mistTeal" />
               {authState.user?.role.toUpperCase()} ACCESS
             </div>

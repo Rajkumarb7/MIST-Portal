@@ -26,6 +26,7 @@ export interface Rates {
   day: number;
   evening: number;
   night: number;
+  sleepover: number;
   saturday: number;
   sunday: number;
   publicHoliday: number;
@@ -46,7 +47,7 @@ export interface TimesheetEntry {
   clientId: string;
   clientName: string;
   serviceType: string;
-  shiftType: 'day' | 'evening' | 'night';
+  shiftType: 'day' | 'evening' | 'night' | 'sleepover';
   location: string;
   startTime: string;
   endTime: string;
