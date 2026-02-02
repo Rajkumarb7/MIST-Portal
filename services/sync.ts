@@ -63,36 +63,60 @@ export const syncService = {
   },
 
   /**
-   * Sync all data to Google Sheets
+   * Sync all data to Google Sheets using hidden iframe form submission
    */
   syncAllData: async (webhookUrl: string, data: SyncData) => {
     if (!webhookUrl) throw new Error("Webhook URL not configured");
 
-    try {
-      const payload = {
-        timestamp: new Date().toISOString(),
-        type: 'FULL_SYNC',
-        timesheets: data.timesheets,
-        staff: data.staff,
-        clients: data.clients
-      };
+    return new Promise((resolve, reject) => {
+      try {
+        const payload = {
+          timestamp: new Date().toISOString(),
+          type: 'FULL_SYNC',
+          timesheets: data.timesheets,
+          staff: data.staff,
+          clients: data.clients
+        };
 
-      // Use fetch with no-cors mode and form data for Google Apps Script compatibility
-      const formData = new FormData();
-      formData.append('data', JSON.stringify(payload));
+        // Create hidden iframe for form submission (bypasses CORS)
+        const iframeName = 'mist_sync_frame_' + Date.now();
+        const iframe = document.createElement('iframe');
+        iframe.name = iframeName;
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
 
-      await fetch(webhookUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: formData
-      });
+        // Create form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = webhookUrl;
+        form.target = iframeName;
+        form.style.display = 'none';
 
-      // With no-cors we can't read the response, but the request is sent
-      return true;
-    } catch (error) {
-      console.error("Full sync failed:", error);
-      throw error;
-    }
+        // Add data as hidden input
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'data';
+        input.value = JSON.stringify(payload);
+        form.appendChild(input);
+
+        document.body.appendChild(form);
+
+        // Clean up after submission
+        iframe.onload = () => {
+          setTimeout(() => {
+            document.body.removeChild(form);
+            document.body.removeChild(iframe);
+          }, 1000);
+          resolve(true);
+        };
+
+        // Submit form
+        form.submit();
+      } catch (error) {
+        console.error("Full sync failed:", error);
+        reject(error);
+      }
+    });
   },
 
   /**
