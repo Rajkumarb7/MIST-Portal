@@ -69,18 +69,21 @@ export const syncService = {
     if (!webhookUrl) throw new Error("Webhook URL not configured");
 
     try {
+      // Use POST with text/plain to avoid CORS preflight
+      const payload = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        type: 'FULL_SYNC',
+        timesheets: data.timesheets,
+        staff: data.staff,
+        clients: data.clients
+      });
+
       const response = await fetch(webhookUrl, {
         method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          timestamp: new Date().toISOString(),
-          type: 'FULL_SYNC',
-          timesheets: data.timesheets,
-          staff: data.staff,
-          clients: data.clients
-        })
+        headers: { 'Content-Type': 'text/plain' },
+        body: payload
       });
+
       return true;
     } catch (error) {
       console.error("Full sync failed:", error);
@@ -123,16 +126,18 @@ export const syncService = {
     if (!webhookUrl) throw new Error("Webhook URL not configured");
 
     try {
+      const payload = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        type: 'SYNC_REPORTS',
+        data: entries
+      });
+
       const response = await fetch(webhookUrl, {
         method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          timestamp: new Date().toISOString(),
-          type: 'SYNC_REPORTS',
-          data: entries
-        })
+        headers: { 'Content-Type': 'text/plain' },
+        body: payload
       });
+
       return true;
     } catch (error) {
       console.error("Sync failed:", error);
