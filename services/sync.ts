@@ -2,7 +2,7 @@
 import { TimesheetEntry, Staff, Client } from '../types';
 
 // Debounce helper to prevent too many sync calls
-let syncTimeout: NodeJS.Timeout | null = null;
+let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 const SYNC_DELAY = 2000; // 2 seconds after last change
 
 interface SyncData {

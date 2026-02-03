@@ -20,7 +20,7 @@ export const storage = {
   getClients: (): Client[] => {
     const data = localStorage.getItem(KEYS.CLIENTS);
     return data ? JSON.parse(data) : [
-      { id: 'c1', name: 'John Doe', rates: { day: 25, evening: 28, night: 30, saturday: 37.5, sunday: 50, publicHoliday: 62.5, km: 0.85 } }
+      { id: 'c1', name: 'John Doe', rates: { day: 25, evening: 28, night: 30, sleepover: 250, saturday: 37.5, sunday: 50, publicHoliday: 62.5, km: 0.85 } }
     ];
   },
   saveClients: (clients: Client[]) => localStorage.setItem(KEYS.CLIENTS, JSON.stringify(clients)),

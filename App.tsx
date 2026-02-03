@@ -125,8 +125,14 @@ const App: React.FC = () => {
     return items.filter(item => authState.user && item.roles.includes(authState.user.role));
   }, [authState.user]);
 
+  // Handle data loaded from cloud (for new devices)
+  const handleDataLoaded = (newStaff: Staff[], newClients: Client[]) => {
+    setStaff(newStaff);
+    setClients(newClients);
+  };
+
   if (!authState.isAuthenticated) {
-    return <AuthOverlay onLogin={handleLogin} staff={staff} clients={clients} />;
+    return <AuthOverlay onLogin={handleLogin} staff={staff} clients={clients} onDataLoaded={handleDataLoaded} />;
   }
 
   // Close mobile menu when tab changes
