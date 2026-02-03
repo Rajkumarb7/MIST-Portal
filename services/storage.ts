@@ -8,11 +8,31 @@ const KEYS = {
   THEME: 'timesheet_theme_v3'
 };
 
+// Default rates for new staff members
+const DEFAULT_RATES = {
+  day: 65,
+  evening: 72,
+  night: 85,
+  sleepover: 250,
+  saturday: 95,
+  sunday: 125,
+  publicHoliday: 160,
+  km: 0.96
+};
+
 export const storage = {
   getStaff: (): Staff[] => {
     const data = localStorage.getItem(KEYS.STAFF);
-    return data ? JSON.parse(data) : [
-      { id: '1', name: 'Raj Kumar', role: 'team-leader', email: 'raj@example.com', phone: '0400000000', startDate: '2024-01-01', active: true }
+    if (data) {
+      // Ensure all staff have rates (migration for existing data)
+      const staff = JSON.parse(data);
+      return staff.map((s: Staff) => ({
+        ...s,
+        rates: s.rates || DEFAULT_RATES
+      }));
+    }
+    return [
+      { id: '1', name: 'Raj Kumar', role: 'team-leader', email: 'raj@example.com', phone: '0400000000', startDate: '2024-01-01', active: true, rates: DEFAULT_RATES }
     ];
   },
   saveStaff: (staff: Staff[]) => localStorage.setItem(KEYS.STAFF, JSON.stringify(staff)),
@@ -20,7 +40,7 @@ export const storage = {
   getClients: (): Client[] => {
     const data = localStorage.getItem(KEYS.CLIENTS);
     return data ? JSON.parse(data) : [
-      { id: 'c1', name: 'John Doe', rates: { day: 25, evening: 28, night: 30, sleepover: 250, saturday: 37.5, sunday: 50, publicHoliday: 62.5, km: 0.85 } }
+      { id: 'c1', name: 'John Doe' }
     ];
   },
   saveClients: (clients: Client[]) => localStorage.setItem(KEYS.CLIENTS, JSON.stringify(clients)),

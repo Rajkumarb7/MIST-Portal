@@ -12,16 +12,6 @@ export interface User {
   email?: string;
 }
 
-export interface Staff {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-  phone: string;
-  startDate: string;
-  active: boolean;
-}
-
 export interface Rates {
   day: number;
   evening: number;
@@ -33,10 +23,21 @@ export interface Rates {
   km: number;
 }
 
+export interface Staff {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  phone: string;
+  startDate: string;
+  active: boolean;
+  rates: Rates; // Rates moved to staff - different staff get different rates
+}
+
 export interface Client {
   id: string;
   name: string;
-  rates: Rates;
+  // Rates removed - now on Staff
 }
 
 export interface TimesheetEntry {

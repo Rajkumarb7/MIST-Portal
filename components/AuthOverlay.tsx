@@ -58,6 +58,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin, staff, clients, onDa
 
       if (data) {
         // Transform the data from Google Sheets format
+        // Staff now includes rates (moved from clients)
         const loadedStaff: Staff[] = (data.staff || []).map((s: any) => ({
           id: s.id || s.ID,
           name: s.name || s.Name,
@@ -65,22 +66,23 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin, staff, clients, onDa
           email: s.email || s.Email || '',
           phone: s.phone || s.Phone || '',
           startDate: s.startdate || s.startDate || s.StartDate || '',
-          active: s.active === 'Yes' || s.active === true || s.Active === 'Yes'
+          active: s.active === 'Yes' || s.active === true || s.Active === 'Yes',
+          rates: {
+            day: Number(s.dayrate || s.day || s.DayRate || 65),
+            evening: Number(s.eveningrate || s.evening || s.EveningRate || 72),
+            night: Number(s.nightrate || s.night || s.NightRate || 85),
+            sleepover: Number(s.sleepoverrate || s.sleepover || s.SleepoverRate || 250),
+            saturday: Number(s.saturdayrate || s.saturday || s.SaturdayRate || 95),
+            sunday: Number(s.sundayrate || s.sunday || s.SundayRate || 125),
+            publicHoliday: Number(s.holidayrate || s.publicholiday || s.PublicHolidayRate || 160),
+            km: Number(s.kmrate || s.km || s.KMRate || 0.96)
+          }
         }));
 
+        // Clients now only have id and name (rates moved to staff)
         const loadedClients: Client[] = (data.clients || []).map((c: any) => ({
           id: c.id || c.ID,
-          name: c.name || c.Name,
-          rates: {
-            day: Number(c.dayrate || c.day || c.DayRate || 65),
-            evening: Number(c.eveningrate || c.evening || c.EveningRate || 72),
-            night: Number(c.nightrate || c.night || c.NightRate || 85),
-            sleepover: Number(c.sleepoverrate || c.sleepover || c.SleepoverRate || 250),
-            saturday: Number(c.saturdayrate || c.saturday || c.SaturdayRate || 95),
-            sunday: Number(c.sundayrate || c.sunday || c.SundayRate || 125),
-            publicHoliday: Number(c.holidayrate || c.publicholiday || c.PublicHolidayRate || 160),
-            km: Number(c.kmrate || c.km || c.KMRate || 0.96)
-          }
+          name: c.name || c.Name
         }));
 
         // Save to localStorage
