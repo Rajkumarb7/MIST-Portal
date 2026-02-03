@@ -118,31 +118,57 @@ export const syncService = {
   },
 
   /**
-   * Load data from Google Sheets on startup
+   * Load data from Google Sheets using JSONP (bypasses CORS)
    */
   loadFromCloud: async (webhookUrl: string): Promise<SyncData | null> => {
     if (!webhookUrl) return null;
 
-    try {
-      // For Google Apps Script, we need to use a GET request
-      const response = await fetch(webhookUrl + '?action=read', {
-        method: 'GET',
-      });
+    return new Promise((resolve) => {
+      // Create unique callback name
+      const callbackName = 'mistCallback_' + Date.now();
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch from cloud');
-      }
+      // Create global callback function
+      (window as any)[callbackName] = (data: any) => {
+        // Clean up
+        delete (window as any)[callbackName];
+        const script = document.getElementById(callbackName);
+        if (script) script.remove();
 
-      const data = await response.json();
-      return {
-        timesheets: data.timesheets || [],
-        staff: data.staff || [],
-        clients: data.clients || []
+        if (data && data.success !== false) {
+          resolve({
+            timesheets: data.timesheets || [],
+            staff: data.staff || [],
+            clients: data.clients || []
+          });
+        } else {
+          console.error('Cloud load error:', data?.error);
+          resolve(null);
+        }
       };
-    } catch (error) {
-      console.error("Load from cloud failed:", error);
-      return null;
-    }
+
+      // Create script tag for JSONP
+      const script = document.createElement('script');
+      script.id = callbackName;
+      script.src = webhookUrl + '?callback=' + callbackName;
+      script.onerror = () => {
+        delete (window as any)[callbackName];
+        script.remove();
+        console.error('JSONP script load failed');
+        resolve(null);
+      };
+
+      document.body.appendChild(script);
+
+      // Timeout after 15 seconds
+      setTimeout(() => {
+        if ((window as any)[callbackName]) {
+          delete (window as any)[callbackName];
+          const s = document.getElementById(callbackName);
+          if (s) s.remove();
+          resolve(null);
+        }
+      }, 15000);
+    });
   },
 
   /**
