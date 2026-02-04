@@ -407,7 +407,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
                     <h4 className="font-bold text-xs truncate">{entry.clientName}</h4>
                     <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tighter">{entry.serviceType}</p>
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="text-[10px] font-black text-success">${entry.totalEarnings.toFixed(2)}</span>
+                      <span className="text-[10px] font-black text-success">${(Number(entry.totalEarnings) || 0).toFixed(2)}</span>
                       <span className="text-[10px] text-gray-500">{entry.date}</span>
                     </div>
                   </div>
