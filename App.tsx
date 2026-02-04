@@ -158,14 +158,12 @@ const App: React.FC = () => {
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="p-6 md:p-8 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl flex items-center justify-center text-mistNavy shadow-xl">
-              <Activity size={24} />
-            </div>
-            <div>
-              <h1 className="font-extrabold text-lg md:text-xl leading-tight tracking-tight uppercase">MIST</h1>
-              <span className="text-[10px] text-mistTeal font-bold uppercase tracking-[0.2em]">Management</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <img
+              src="/MIST-Portal/mist-logo.png"
+              alt="MIST"
+              className="h-12 md:h-14"
+            />
           </div>
           {/* Close button for mobile */}
           <button

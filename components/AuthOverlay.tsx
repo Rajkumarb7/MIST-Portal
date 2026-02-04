@@ -263,10 +263,11 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin, staff, clients, onDa
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-mistNavy/90 backdrop-blur-xl p-4">
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10">
         <div className="bg-mistNavy p-10 text-center text-white relative overflow-hidden">
-          <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-white/20 relative z-10 shadow-inner">
-            <Activity size={40} className="text-mistTeal" />
-          </div>
-          <h2 className="text-3xl font-black tracking-tight relative z-10 uppercase">MIST PORTAL</h2>
+          <img
+            src="/MIST-Portal/mist-logo.png"
+            alt="MIST Logo"
+            className="h-24 mx-auto mb-4 relative z-10"
+          />
           <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.3em] mt-2 relative z-10">Secure Gateway</p>
         </div>
 
