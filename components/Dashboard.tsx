@@ -90,11 +90,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
   }, [user, entries, filterStaff, filterClient, dateRange, customStartDate, customEndDate]);
 
   const stats = useMemo(() => {
-    const totalHours = filteredEntries.reduce((sum, e) => sum + e.hours, 0);
-    const workEarnings = filteredEntries.reduce((sum, e) => sum + e.workEarnings, 0);
-    const travelEarnings = filteredEntries.reduce((sum, e) => sum + e.travelEarnings, 0);
-    const totalEarnings = filteredEntries.reduce((sum, e) => sum + e.totalEarnings, 0);
-    const totalKM = filteredEntries.reduce((sum, e) => sum + e.km, 0);
+    // Ensure numeric values - data from cloud sync may come as strings
+    const totalHours = filteredEntries.reduce((sum, e) => sum + (Number(e.hours) || 0), 0);
+    const workEarnings = filteredEntries.reduce((sum, e) => sum + (Number(e.workEarnings) || 0), 0);
+    const travelEarnings = filteredEntries.reduce((sum, e) => sum + (Number(e.travelEarnings) || 0), 0);
+    const totalEarnings = filteredEntries.reduce((sum, e) => sum + (Number(e.totalEarnings) || 0), 0);
+    const totalKM = filteredEntries.reduce((sum, e) => sum + (Number(e.km) || 0), 0);
     const pendingCount = filteredEntries.filter(e => e.status === 'pending').length;
 
     return { totalHours, workEarnings, travelEarnings, totalEarnings, totalKM, pendingCount };
@@ -107,9 +108,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
       if (!breakdown[e.staffName]) {
         breakdown[e.staffName] = { hours: 0, kms: 0, earnings: 0 };
       }
-      breakdown[e.staffName].hours += e.hours;
-      breakdown[e.staffName].kms += e.km;
-      breakdown[e.staffName].earnings += e.totalEarnings;
+      breakdown[e.staffName].hours += Number(e.hours) || 0;
+      breakdown[e.staffName].kms += Number(e.km) || 0;
+      breakdown[e.staffName].earnings += Number(e.totalEarnings) || 0;
     });
     return Object.entries(breakdown).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.earnings - a.earnings);
   }, [filteredEntries]);
@@ -121,9 +122,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
       if (!breakdown[e.clientName]) {
         breakdown[e.clientName] = { hours: 0, kms: 0, earnings: 0 };
       }
-      breakdown[e.clientName].hours += e.hours;
-      breakdown[e.clientName].kms += e.km;
-      breakdown[e.clientName].earnings += e.totalEarnings;
+      breakdown[e.clientName].hours += Number(e.hours) || 0;
+      breakdown[e.clientName].kms += Number(e.km) || 0;
+      breakdown[e.clientName].earnings += Number(e.totalEarnings) || 0;
     });
     return Object.entries(breakdown).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.earnings - a.earnings);
   }, [filteredEntries]);

@@ -23,7 +23,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ entries, clients, staff }) => {
     // Top 5 staff by total hours
     const staffHours: Record<string, number> = {};
     entries.forEach(e => {
-      staffHours[e.staffName] = (staffHours[e.staffName] || 0) + e.hours;
+      staffHours[e.staffName] = (staffHours[e.staffName] || 0) + (Number(e.hours) || 0);
     });
     return Object.entries(staffHours)
       .map(([name, hours]) => ({ name, value: hours }))

@@ -65,7 +65,7 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
   const clientBreakdown = useMemo(() => {
     const data: Record<string, number> = {};
     filteredEntries.forEach(e => {
-      data[e.clientName] = (data[e.clientName] || 0) + e.totalEarnings;
+      data[e.clientName] = (data[e.clientName] || 0) + (Number(e.totalEarnings) || 0);
     });
     return Object.entries(data).map(([name, value]) => ({ name, value }));
   }, [filteredEntries]);
@@ -154,7 +154,7 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Kilometer Total</p>
-                  <p className="font-bold">{filteredEntries.reduce((sum, e) => sum + e.km, 0).toFixed(1)} KM</p>
+                  <p className="font-bold">{filteredEntries.reduce((sum, e) => sum + (Number(e.km) || 0), 0).toFixed(1)} KM</p>
                 </div>
               </div>
               <ArrowRight className="text-gray-300" />

@@ -323,8 +323,8 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
   const summary = useMemo(() => {
     return {
       totalEntries: filtered.length,
-      totalHours: filtered.reduce((sum, e) => sum + e.hours, 0),
-      totalEarnings: filtered.reduce((sum, e) => sum + e.totalEarnings, 0),
+      totalHours: filtered.reduce((sum, e) => sum + (Number(e.hours) || 0), 0),
+      totalEarnings: filtered.reduce((sum, e) => sum + (Number(e.totalEarnings) || 0), 0),
       pending: filtered.filter(e => e.status === 'pending').length,
       approved: filtered.filter(e => e.status === 'approved').length
     };
@@ -615,11 +615,11 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
                   <td className="px-6 py-4 text-xs text-slate-500">{SERVICE_TYPES.find(s => s.id === entry.serviceType)?.name || entry.serviceType}</td>
                   <td className="px-6 py-4">
                     <span className="inline-block px-3 py-1 bg-mistNavy/10 dark:bg-mistNavy/30 text-mistNavy dark:text-white rounded-lg text-xs font-black">
-                      {entry.hours.toFixed(1)}h
+                      {(Number(entry.hours) || 0).toFixed(1)}h
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium">{entry.km.toFixed(1)}</td>
-                  <td className="px-6 py-4 text-center font-black text-success">${entry.totalEarnings.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-sm font-medium">{(Number(entry.km) || 0).toFixed(1)}</td>
+                  <td className="px-6 py-4 text-center font-black text-success">${(Number(entry.totalEarnings) || 0).toFixed(2)}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
                       entry.status === 'approved' ? 'bg-success/10 text-success' :
