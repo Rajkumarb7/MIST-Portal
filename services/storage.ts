@@ -39,11 +39,27 @@ export const storage = {
 
   getClients: (): Client[] => {
     const data = localStorage.getItem(KEYS.CLIENTS);
-    return data ? JSON.parse(data) : [
+    if (data) {
+      // Sanitize client data - only keep id and name (rates were moved to staff)
+      const clients = JSON.parse(data);
+      return clients.map((c: any) => ({
+        id: c.id || String(Date.now()),
+        name: String(c.name || 'Unknown Client')
+      })).filter((c: Client) => {
+        // Filter out clients with numeric-only names (likely corrupted rate data)
+        const isNumericOnly = /^\d+(\.\d+)?$/.test(c.name);
+        return c.id && c.name && c.name !== 'Unknown Client' && !isNumericOnly;
+      });
+    }
+    return [
       { id: 'c1', name: 'John Doe' }
     ];
   },
-  saveClients: (clients: Client[]) => localStorage.setItem(KEYS.CLIENTS, JSON.stringify(clients)),
+  saveClients: (clients: Client[]) => {
+    // Only save id and name for clients
+    const sanitized = clients.map(c => ({ id: c.id, name: c.name }));
+    localStorage.setItem(KEYS.CLIENTS, JSON.stringify(sanitized));
+  },
 
   getEntries: (): TimesheetEntry[] => {
     const data = localStorage.getItem(KEYS.ENTRIES);

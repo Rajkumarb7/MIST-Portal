@@ -232,12 +232,57 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
         // For manager: load all entries
         let loadedEntries = data.timesheets;
         if (user.role === UserRole.STAFF) {
-          loadedEntries = loadedEntries.filter((e: TimesheetEntry) => e.staffId === user.id);
+          loadedEntries = loadedEntries.filter((e: any) => e.staffId === user.id || e.StaffID === user.id);
         }
+
+        // Transform and recalculate earnings using STAFF rates
+        const transformedEntries: TimesheetEntry[] = loadedEntries.map((e: any) => {
+          // Get staff member for rate calculation
+          const staffMember = staff.find(s => s.id === (e.staffId || e.StaffID));
+          const hours = Number(e.hours || e.Hours || 0);
+          const km = Number(e.km || e.KM || 0);
+          const date = e.date || e.Date || '';
+          const shiftType = e.shiftType || e.ShiftType || 'day';
+
+          // Calculate earnings using staff rates
+          let workEarnings = Number(e.workEarnings || e.WorkEarnings || 0);
+          let travelEarnings = Number(e.travelEarnings || e.TravelEarnings || 0);
+
+          // If earnings are 0 or missing, recalculate from staff rates
+          if (workEarnings === 0 && hours > 0 && staffMember?.rates) {
+            const rate = getHourlyRate(staffMember, shiftType, date);
+            workEarnings = hours * rate;
+          }
+          if (travelEarnings === 0 && km > 0 && staffMember?.rates) {
+            travelEarnings = km * (staffMember.rates.km || 0.96);
+          }
+
+          return {
+            id: e.id || e.ID || Date.now().toString(),
+            date: date,
+            staffId: e.staffId || e.StaffID || '',
+            staffName: e.staffName || e.StaffName || staffMember?.name || '',
+            clientId: e.clientId || e.ClientID || '',
+            clientName: e.clientName || e.ClientName || '',
+            serviceType: e.serviceType || e.ServiceType || '',
+            shiftType: shiftType as 'day' | 'evening' | 'night' | 'sleepover',
+            location: e.location || e.Location || 'Community',
+            startTime: e.startTime || e.StartTime || '09:00',
+            endTime: e.endTime || e.EndTime || '17:00',
+            hours: hours,
+            km: km,
+            workEarnings: workEarnings,
+            travelEarnings: travelEarnings,
+            totalEarnings: workEarnings + travelEarnings,
+            notes: e.notes || e.Notes || '',
+            status: (e.status || e.Status || 'pending') as 'pending' | 'approved' | 'rejected',
+            syncedToCloud: true
+          };
+        });
 
         // Merge with existing entries (avoid duplicates by ID)
         const existingIds = new Set(entries.map(e => e.id));
-        const newEntries = loadedEntries.filter((e: TimesheetEntry) => !existingIds.has(e.id));
+        const newEntries = transformedEntries.filter(e => !existingIds.has(e.id));
 
         if (newEntries.length > 0) {
           onUpdate([...entries, ...newEntries]);
