@@ -94,23 +94,30 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
             <div className="w-2 h-6 bg-accent rounded-full" />
             Earnings by Client
           </h4>
-          <div className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={clientBreakdown} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#333" />
-                <XAxis type="number" stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
-                <YAxis dataKey="name" type="category" stroke="#666" fontSize={12} width={100} axisLine={false} tickLine={false} />
-                <Tooltip 
-                  cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                  contentStyle={{ backgroundColor: '#111', border: 'none', borderRadius: '12px', fontSize: '12px' }}
-                />
-                <Bar dataKey="value" radius={[0, 10, 10, 0]} barSize={20}>
-                  {clientBreakdown.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="h-[350px] flex items-center justify-center">
+            {clientBreakdown.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={clientBreakdown} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#333" />
+                  <XAxis type="number" stroke="#666" fontSize={10} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type="category" stroke="#666" fontSize={12} width={100} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                    contentStyle={{ backgroundColor: '#111', border: 'none', borderRadius: '12px', fontSize: '12px' }}
+                  />
+                  <Bar dataKey="value" radius={[0, 10, 10, 0]} barSize={20}>
+                    {clientBreakdown.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-center text-slate-400">
+                <p className="text-sm font-medium">No earnings data yet</p>
+                <p className="text-xs mt-1">Log shifts to see earnings breakdown</p>
+              </div>
+            )}
           </div>
         </div>
 
