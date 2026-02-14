@@ -124,9 +124,31 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate client selection
+    if (!newEntry.clientId) {
+      alert('Please select a client from the dropdown');
+      return;
+    }
+
     const client = clients.find(c => c.id === newEntry.clientId);
-    const staffMember = staff.find(s => s.id === (newEntry.staffId || user.id));
-    if (!client || !staffMember) return;
+    if (!client) {
+      alert('Selected client not found. Please refresh and try again.');
+      return;
+    }
+
+    // Validate staff selection
+    const staffId = newEntry.staffId || user.id;
+    if (user.role === UserRole.MANAGER && !newEntry.staffId) {
+      alert('Please select a worker from the dropdown');
+      return;
+    }
+
+    const staffMember = staff.find(s => s.id === staffId);
+    if (!staffMember) {
+      alert('Selected worker not found. Please refresh and try again.');
+      return;
+    }
 
     const hours = calculateHours(newEntry.startTime!, newEntry.endTime!);
     // Use STAFF rates (not client rates)
