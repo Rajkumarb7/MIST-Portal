@@ -45,7 +45,21 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ clients, onUpdate }
     }
   };
 
-  const filtered = clients.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Debug logging
+  console.log('[ClientManagement] Received clients:', clients);
+  console.log('[ClientManagement] Clients length:', clients.length);
+  console.log('[ClientManagement] First client:', clients[0]);
+
+  // Safe filtering with null/undefined checks
+  const filtered = clients.filter(c => {
+    if (!c || !c.name || typeof c.name !== 'string') {
+      console.warn('[ClientManagement] Invalid client:', c);
+      return false;
+    }
+    return c.name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  console.log('[ClientManagement] Filtered clients:', filtered.length);
 
   return (
     <div className="space-y-8">
