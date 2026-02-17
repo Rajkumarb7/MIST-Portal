@@ -12,6 +12,9 @@ const Settings: React.FC<SettingsProps> = ({ user }) => {
   const [webhookUrl, setWebhookUrl] = useState(localStorage.getItem('mist_webhook_url') || '');
   const [managerEmail, setManagerEmail] = useState(localStorage.getItem('mist_manager_email') || 'manager@mistau.com');
   const [companyName, setCompanyName] = useState('MIST | Mobile Intensive Services Team');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const saveIntegrations = () => {
     localStorage.setItem('mist_webhook_url', webhookUrl);
@@ -32,6 +35,44 @@ const Settings: React.FC<SettingsProps> = ({ user }) => {
     a.href = url;
     a.download = `mist_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
+  };
+
+  const changePassword = () => {
+    // Validate inputs
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      alert('Please fill in all password fields');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert('New password must be at least 6 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert('New password and confirmation do not match');
+      return;
+    }
+
+    // Get stored password
+    const passwordKey = `mist_pass_manager_${user.id}`;
+    const storedPassword = localStorage.getItem(passwordKey);
+    const defaultPassword = 'benjo234'; // From AUTH_CONFIG
+
+    // Verify current password
+    if (currentPassword !== (storedPassword || defaultPassword)) {
+      alert('Current password is incorrect');
+      return;
+    }
+
+    // Save new password
+    localStorage.setItem(passwordKey, newPassword);
+    alert('Password changed successfully! Use your new password on next login.');
+
+    // Clear fields
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
   };
 
   return (
@@ -79,6 +120,52 @@ const Settings: React.FC<SettingsProps> = ({ user }) => {
               </div>
               <button onClick={saveIntegrations} className="mt-2 w-full py-4 bg-mistTeal text-white rounded-2xl font-black shadow-lg shadow-mistTeal/20 flex items-center justify-center gap-2 hover:bg-mistTeal/90 transition-all">
                 <Save size={18} /> Save Sync Settings
+              </button>
+            </div>
+          </section>
+
+          {/* Security & Password Management */}
+          <section className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <Shield size={20} className="text-mistTeal" />
+              <h4 className="font-bold text-mistNavy dark:text-white">Security & Access Control</h4>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter current password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent focus:border-mistTeal outline-none transition-all font-medium text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">New Password</label>
+                <input
+                  type="password"
+                  placeholder="Minimum 6 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent focus:border-mistTeal outline-none transition-all font-medium text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Confirm New Password</label>
+                <input
+                  type="password"
+                  placeholder="Re-enter new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent focus:border-mistTeal outline-none transition-all font-medium text-sm"
+                />
+              </div>
+              <button
+                onClick={changePassword}
+                className="mt-2 w-full py-4 bg-mistNavy text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 hover:bg-mistNavy/90 transition-all"
+              >
+                <Shield size={18} /> Change Password
               </button>
             </div>
           </section>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>MIST Data Debugger</title></head>
+<body>
+<h1>MIST Portal Data Debugger</h1>
+<button onclick="checkData()">Check Data</button>
+<pre id="output"></pre>
+<script>
+function checkData() {
+  const staff = JSON.parse(localStorage.getItem('timesheet_staff_v3') || '[]');
+  const clients = JSON.parse(localStorage.getItem('timesheet_clients_v3') || '[]');
+  const entries = JSON.parse(localStorage.getItem('timesheet_entries_v3') || '[]');
+  
+  const output = {
+    staff: staff.map(s => ({id: s.id, name: s.name})),
+    clients: clients.map(c => ({id: c.id, name: c.name})),
+    entries_count: entries.length
+  };
+  
+  document.getElementById('output').textContent = JSON.stringify(output, null, 2);
+  console.log('Full data:', {staff, clients, entries});
+}
+</script>
+</body>
+</html>

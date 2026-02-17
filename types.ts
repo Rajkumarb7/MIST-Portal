@@ -59,6 +59,7 @@ export interface TimesheetEntry {
   totalEarnings: number;
   notes: string;
   status: 'pending' | 'approved' | 'rejected';
+  isPublicHoliday?: boolean; // Mark shift as Public Holiday for special rate
   syncedToCloud?: boolean; // New sync status
 }
 

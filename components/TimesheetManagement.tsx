@@ -79,7 +79,8 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
     endTime: '17:00',
     km: 0,
     notes: '',
-    location: 'Community'
+    location: 'Community',
+    isPublicHoliday: false
   });
 
   // Time conversion helpers for AM/PM format
@@ -106,10 +107,13 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
     return (endMin - startMin) / 60;
   };
 
-  // Get hourly rate from STAFF (not client) based on shift type and day
-  const getHourlyRate = (staffMember: Staff, shift: string, dateStr: string) => {
+  // Get hourly rate from STAFF (not client) based on shift type, day, and public holiday status
+  const getHourlyRate = (staffMember: Staff, shift: string, dateStr: string, isPublicHoliday?: boolean) => {
     const rates = staffMember.rates;
     if (!rates) return 65; // Default fallback
+
+    // Public Holiday takes highest priority
+    if (isPublicHoliday) return rates.publicHoliday || 160;
 
     const date = new Date(dateStr);
     const day = date.getDay();
@@ -151,8 +155,8 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
     }
 
     const hours = calculateHours(newEntry.startTime!, newEntry.endTime!);
-    // Use STAFF rates (not client rates)
-    const rate = getHourlyRate(staffMember, newEntry.shiftType!, newEntry.date!);
+    // Use STAFF rates (not client rates), check for public holiday
+    const rate = getHourlyRate(staffMember, newEntry.shiftType!, newEntry.date!, newEntry.isPublicHoliday);
     const workEarnings = hours * rate;
     const kmRate = staffMember.rates?.km || 0.96;
     const travelEarnings = (newEntry.km || 0) * kmRate;
@@ -183,7 +187,8 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
       endTime: '17:00',
       km: 0,
       notes: '',
-      location: 'Community'
+      location: 'Community',
+      isPublicHoliday: false
     });
   };
 
@@ -193,8 +198,8 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
     if (!staffMember) return;
 
     const hours = calculateHours(editingEntry.startTime, editingEntry.endTime);
-    // Use STAFF rates (not client rates)
-    const rate = getHourlyRate(staffMember, editingEntry.shiftType, editingEntry.date);
+    // Use STAFF rates (not client rates), check for public holiday
+    const rate = getHourlyRate(staffMember, editingEntry.shiftType, editingEntry.date, editingEntry.isPublicHoliday);
     const workEarnings = hours * rate;
     const kmRate = staffMember.rates?.km || 0.96;
     const travelEarnings = editingEntry.km * kmRate;
@@ -539,6 +544,22 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
                 value={newEntry.date}
                 onChange={e => setNewEntry({ ...newEntry, date: e.target.value })}
               />
+              {newEntry.date && (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-mistTeal">
+                    {new Date(newEntry.date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long' })}
+                  </p>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newEntry.isPublicHoliday || false}
+                      onChange={e => setNewEntry({ ...newEntry, isPublicHoliday: e.target.checked })}
+                      className="w-4 h-4 rounded border-2 border-mistTeal text-mistTeal focus:ring-mistTeal focus:ring-2"
+                    />
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Public Holiday</span>
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Client */}
@@ -671,7 +692,17 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
               {filtered.map(entry => (
                 <tr key={entry.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-6 py-4">
-                    <span className="font-bold text-sm text-mistNavy dark:text-white">{entry.date}</span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-bold text-sm text-mistNavy dark:text-white">{entry.date}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-mistTeal font-semibold">
+                          {new Date(entry.date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short' })}
+                        </span>
+                        {entry.isPublicHoliday && (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-warning/20 text-warning rounded font-black uppercase">PH</span>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className="font-bold text-sm text-mistNavy dark:text-white">{entry.clientName}</span>

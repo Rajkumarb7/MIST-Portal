@@ -13,9 +13,6 @@ export const SERVICE_TYPES = [
   { id: 'sil-day', name: 'SIL Day', icon: '☀️' },
   { id: 'sil-night', name: 'SIL Night', icon: '🌙' },
   { id: 'sil-sleepover', name: 'SIL Sleepover', icon: '😴' },
-  { id: 'mental-health', name: 'Mental Health Support', icon: '🧠' },
-  { id: 'recovery-coach', name: 'Psychosocial Recovery', icon: '🌱' },
-  { id: 'mentoring', name: 'Youth Mentoring', icon: '🤝' },
   { id: 'outreach', name: 'Outreach Support', icon: '📍' }
 ];
 

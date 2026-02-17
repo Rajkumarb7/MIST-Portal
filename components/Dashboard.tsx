@@ -140,13 +140,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
 
   const chartData = useMemo(() => {
     const days: Record<string, number> = {};
-    const last7Days = Array.from({length: 7}).map((_, i) => {
+    const lastFortnight = Array.from({length: 14}).map((_, i) => {
       const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
+      d.setDate(d.getDate() - (13 - i));
       return d.toISOString().split('T')[0];
     });
 
-    last7Days.forEach(day => days[day] = 0);
+    lastFortnight.forEach(day => days[day] = 0);
     filteredEntries.forEach(e => {
       if (days[e.date] !== undefined) {
         days[e.date] += e.hours;
@@ -154,6 +154,26 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
     });
 
     return Object.entries(days).map(([name, hours]) => ({ name: name.split('-').slice(1).join('/'), hours }));
+  }, [filteredEntries]);
+
+  // Monthly earnings trends (last 6 months) - for Staff view
+  const monthlyEarningsData = useMemo(() => {
+    const months: Record<string, number> = {};
+    const last6Months = Array.from({length: 6}).map((_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - i));
+      return { key: d.toISOString().slice(0, 7), name: d.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' }) };
+    });
+
+    last6Months.forEach(m => months[m.key] = 0);
+    filteredEntries.forEach(e => {
+      const monthKey = e.date.slice(0, 7);
+      if (months[monthKey] !== undefined) {
+        months[monthKey] += e.totalEarnings;
+      }
+    });
+
+    return last6Months.map(m => ({ name: m.name, earnings: months[m.key] }));
   }, [filteredEntries]);
 
   // Earnings breakdown for pie chart
@@ -164,7 +184,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Filters - Manager Only */}
+      {/* Filters - Manager */}
       {user.role === UserRole.MANAGER && (
         <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
@@ -234,6 +254,130 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
         </div>
       )}
 
+      {/* Filters - Staff View */}
+      {user.role === UserRole.STAFF && (
+        <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
+              <Filter size={16} /> Filters:
+            </div>
+            <select
+              className="px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold border-0 outline-none"
+              value={filterClient}
+              onChange={e => setFilterClient(e.target.value)}
+            >
+              <option value="">All Clients</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <select
+              className="px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold border-0 outline-none"
+              value={dateRange}
+              onChange={e => setDateRange(e.target.value)}
+            >
+              <option value="all">All Time</option>
+              <option value="week">Last 7 Days</option>
+              <option value="fortnight">Current Fortnight</option>
+              <option value="lastfortnight">Last Fortnight</option>
+              <option value="month">Last 30 Days</option>
+              <option value="quarter">Last 90 Days</option>
+              <option value="custom">Custom Range</option>
+            </select>
+            {dateRange === 'custom' && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Calendar size={14} className="text-slate-400" />
+                  <input
+                    type="date"
+                    className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold border-0 outline-none"
+                    value={customStartDate}
+                    onChange={e => setCustomStartDate(e.target.value)}
+                    placeholder="Start"
+                  />
+                </div>
+                <span className="text-slate-400 text-sm">to</span>
+                <input
+                  type="date"
+                  className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold border-0 outline-none"
+                  value={customEndDate}
+                  onChange={e => setCustomEndDate(e.target.value)}
+                  placeholder="End"
+                />
+              </>
+            )}
+            {(filterClient || dateRange !== 'all') && (
+              <button
+                onClick={() => { setFilterClient(''); setDateRange('all'); setCustomStartDate(''); setCustomEndDate(''); }}
+                className="px-4 py-2 text-xs font-bold text-danger hover:bg-danger/10 rounded-xl"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Filters - Client View */}
+      {user.role === UserRole.CLIENT && (
+        <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
+              <Filter size={16} /> Filters:
+            </div>
+            <select
+              className="px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold border-0 outline-none"
+              value={filterStaff}
+              onChange={e => setFilterStaff(e.target.value)}
+            >
+              <option value="">All Support Workers</option>
+              {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <select
+              className="px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold border-0 outline-none"
+              value={dateRange}
+              onChange={e => setDateRange(e.target.value)}
+            >
+              <option value="all">All Time</option>
+              <option value="week">Last 7 Days</option>
+              <option value="fortnight">Current Fortnight</option>
+              <option value="lastfortnight">Last Fortnight</option>
+              <option value="month">Last 30 Days</option>
+              <option value="quarter">Last 90 Days</option>
+              <option value="custom">Custom Range</option>
+            </select>
+            {dateRange === 'custom' && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Calendar size={14} className="text-slate-400" />
+                  <input
+                    type="date"
+                    className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold border-0 outline-none"
+                    value={customStartDate}
+                    onChange={e => setCustomStartDate(e.target.value)}
+                    placeholder="Start"
+                  />
+                </div>
+                <span className="text-slate-400 text-sm">to</span>
+                <input
+                  type="date"
+                  className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold border-0 outline-none"
+                  value={customEndDate}
+                  onChange={e => setCustomEndDate(e.target.value)}
+                  placeholder="End"
+                />
+              </>
+            )}
+            {(filterStaff || dateRange !== 'all') && (
+              <button
+                onClick={() => { setFilterStaff(''); setDateRange('all'); setCustomStartDate(''); setCustomEndDate(''); }}
+                className="px-4 py-2 text-xs font-bold text-danger hover:bg-danger/10 rounded-xl"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard label="Total Hours" value={stats.totalHours.toFixed(1)} subtext="Active duration" icon={Clock} color="accent" />
@@ -249,7 +393,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h3 className="text-lg font-bold">Performance Trends</h3>
-                <p className="text-sm text-gray-500">Service delivery hours (Last 7 Days)</p>
+                <p className="text-sm text-gray-500">Service delivery hours (Current Fortnight)</p>
               </div>
             </div>
             <div className="h-[280px] w-full">
@@ -270,6 +414,38 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Monthly Earnings Trends - Staff View */}
+          {user.role === UserRole.STAFF && (
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-3xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-lg font-bold">Monthly Earnings Trends</h3>
+                  <p className="text-sm text-gray-500">Total earnings over last 6 months</p>
+                </div>
+              </div>
+              <div className="h-[280px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyEarningsData}>
+                    <defs>
+                      <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.4}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+                    <XAxis dataKey="name" stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1a1a1a', border: 'none', borderRadius: '12px', color: '#fff' }}
+                      formatter={(value: number) => [`$${value.toFixed(2)}`, 'Earnings']}
+                    />
+                    <Bar dataKey="earnings" fill="url(#colorEarnings)" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
           {/* Earnings Breakdown by Staff */}
           {user.role === UserRole.MANAGER && staffBreakdown.length > 0 && (
