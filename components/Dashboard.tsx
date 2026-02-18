@@ -148,8 +148,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
 
     lastFortnight.forEach(day => days[day] = 0);
     filteredEntries.forEach(e => {
-      if (days[e.date] !== undefined) {
-        days[e.date] += e.hours;
+      if (e.date && days[e.date] !== undefined) {
+        days[e.date] += (Number(e.hours) || 0);
       }
     });
 
@@ -167,9 +167,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
 
     last6Months.forEach(m => months[m.key] = 0);
     filteredEntries.forEach(e => {
-      const monthKey = e.date.slice(0, 7);
-      if (months[monthKey] !== undefined) {
-        months[monthKey] += e.totalEarnings;
+      const monthKey = (e.date || '').slice(0, 7);
+      if (monthKey && months[monthKey] !== undefined) {
+        months[monthKey] += (Number(e.totalEarnings) || 0);
       }
     });
 

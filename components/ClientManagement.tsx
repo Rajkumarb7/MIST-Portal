@@ -52,8 +52,8 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ clients, onUpdate }
 
   // Safe filtering with null/undefined checks
   const filtered = clients.filter(c => {
-    if (!c || !c.name || typeof c.name !== 'string') {
-      console.warn('[ClientManagement] Invalid client:', c);
+    if (!c || !c.id || !c.name || typeof c.name !== 'string') {
+      console.warn('[ClientManagement] Invalid client (skipped):', c);
       return false;
     }
     return c.name.toLowerCase().includes(searchTerm.toLowerCase());

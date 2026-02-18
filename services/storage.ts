@@ -63,7 +63,15 @@ export const storage = {
 
   getEntries: (): TimesheetEntry[] => {
     const data = localStorage.getItem(KEYS.ENTRIES);
-    return data ? JSON.parse(data) : [];
+    if (!data) return [];
+    const entries: TimesheetEntry[] = JSON.parse(data);
+    // Sanitize: normalize any null/undefined/ISO dates to YYYY-MM-DD strings
+    // This prevents crashes in Dashboard and other components that call e.date.slice()
+    return entries.map((e: any) => {
+      const rawDate = String(e.date || '');
+      const date = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.substring(0, 10);
+      return { ...e, date: date || '' };
+    });
   },
   saveEntries: (entries: TimesheetEntry[]) => localStorage.setItem(KEYS.ENTRIES, JSON.stringify(entries)),
 
