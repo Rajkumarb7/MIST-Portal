@@ -19,18 +19,25 @@ This guide will help you set up automatic syncing between your MIST Portal and G
 
 **Timesheets sheet - Row 1:**
 ```
-ID | Date | Staff ID | Staff Name | Client ID | Client Name | Service Type | Shift Type | Location | Start Time | End Time | Hours | KM | Work Earnings | Travel Earnings | Total Earnings | Notes | Status
+ID | Date | Staff ID | Staff Name | Client ID | Client Name | Service Type | Shift Type | Location | Start Time | End Time | Hours | KM | Work Earnings | Travel Earnings | Total Earnings | Public Holiday | Notes | Status
 ```
 
 **Staff sheet - Row 1:**
 ```
-ID | Name | Role | Email | Phone | Start Date | Active
+ID | Name | Role | Email | Phone | Start Date | Active | Day Rate | Evening Rate | Night Rate | Sleepover Rate | Saturday Rate | Sunday Rate | Holiday Rate | KM Rate
 ```
 
 **Clients sheet - Row 1:**
 ```
-ID | Name | Day Rate | Evening Rate | Night Rate | Sleepover Rate | Saturday Rate | Sunday Rate | Holiday Rate | KM Rate
+ID | Name
 ```
+
+> ⚠️ **Important for existing sheets:** If you already have data in your sheet, you'll need to add the new columns manually:
+> - **Timesheets:** Add `Public Holiday` column between `Total Earnings` and `Notes`
+> - **Staff:** Add rate columns after `Active`: `Day Rate | Evening Rate | Night Rate | Sleepover Rate | Saturday Rate | Sunday Rate | Holiday Rate | KM Rate`
+> - **Clients:** Remove old rate columns — only `ID | Name` are needed now (rates live on Staff)
+>
+> After adding the new columns, do a fresh Push from the app (Shift Logs → Push to Cloud) to repopulate all data.
 
 ---
 
@@ -41,15 +48,23 @@ ID | Name | Day Rate | Evening Rate | Night Rate | Sleepover Rate | Saturday Rat
 3. Paste this entire script:
 
 ```javascript
-// MIST Portal Sync Script v2.0
-// This script handles bi-directional sync with the MIST Portal
+// MIST Portal Sync Script v3.1
+// Handles bi-directional sync with the MIST Portal web app
 
 function doPost(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
+    // Support both JSON body and hidden form submission (iframe trick)
+    let data;
+    if (e.postData && e.postData.contents) {
+      data = JSON.parse(e.postData.contents);
+    } else if (e.parameter && e.parameter.data) {
+      data = JSON.parse(e.parameter.data);
+    } else {
+      throw new Error('No data received');
+    }
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // Handle different sync types
     if (data.type === 'FULL_SYNC') {
       syncTimesheets(ss, data.timesheets || []);
       syncStaff(ss, data.staff || []);
@@ -61,38 +76,47 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
       timestamp: new Date().toISOString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    })).setMimeType(ContentService.MimeType.TEXT);
 
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({
       success: false,
       error: error.message
-    })).setMimeType(ContentService.MimeType.JSON);
+    })).setMimeType(ContentService.MimeType.TEXT);
   }
 }
 
 function doGet(e) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const action = e.parameter.action;
+    const callback = e.parameter.callback;
 
-    if (action === 'read') {
-      return ContentService.createTextOutput(JSON.stringify({
-        timesheets: readSheet(ss, 'Timesheets'),
-        staff: readSheet(ss, 'Staff'),
-        clients: readSheet(ss, 'Clients')
-      })).setMimeType(ContentService.MimeType.JSON);
+    const result = JSON.stringify({
+      success: true,
+      timesheets: readSheet(ss, 'Timesheets'),
+      staff: readSheet(ss, 'Staff'),
+      clients: readSheet(ss, 'Clients')
+    });
+
+    // JSONP response — required for browser-based CORS-free requests
+    if (callback) {
+      return ContentService.createTextOutput(callback + '(' + result + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
     }
 
-    return ContentService.createTextOutput(JSON.stringify({
-      status: 'ok',
-      message: 'MIST Portal Sync Service Active'
-    })).setMimeType(ContentService.MimeType.JSON);
+    // Plain JSON for direct access
+    return ContentService.createTextOutput(result)
+      .setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      error: error.message
-    })).setMimeType(ContentService.MimeType.JSON);
+    const errResult = JSON.stringify({ success: false, error: error.message });
+    const callback = e.parameter && e.parameter.callback;
+    if (callback) {
+      return ContentService.createTextOutput(callback + '(' + errResult + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return ContentService.createTextOutput(errResult)
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -100,32 +124,34 @@ function syncTimesheets(ss, entries) {
   const sheet = ss.getSheetByName('Timesheets');
   if (!sheet) return;
 
-  // Clear existing data (keep header)
   if (sheet.getLastRow() > 1) {
     sheet.deleteRows(2, sheet.getLastRow() - 1);
   }
 
-  // Add new data
-  entries.forEach(entry => {
+  entries.forEach(function(entry) {
+    // Force date to plain YYYY-MM-DD string — prevents Google Sheets from
+    // auto-converting to a Date serial and returning ISO timestamps on read
+    var dateStr = String(entry.date || '').substring(0, 10);
     sheet.appendRow([
-      entry.id,
-      entry.date,
-      entry.staffId,
-      entry.staffName,
-      entry.clientId,
-      entry.clientName,
-      entry.serviceType,
-      entry.shiftType,
-      entry.location || '',
-      entry.startTime,
-      entry.endTime,
-      entry.hours,
-      entry.km,
-      entry.workEarnings,
-      entry.travelEarnings,
-      entry.totalEarnings,
-      entry.notes || '',
-      entry.status
+      String(entry.id || ''),
+      dateStr,
+      String(entry.staffId || ''),
+      String(entry.staffName || ''),
+      String(entry.clientId || ''),
+      String(entry.clientName || ''),
+      String(entry.serviceType || ''),
+      String(entry.shiftType || ''),
+      String(entry.location || ''),
+      String(entry.startTime || ''),
+      String(entry.endTime || ''),
+      Number(entry.hours || 0),
+      Number(entry.km || 0),
+      Number(entry.workEarnings || 0),
+      Number(entry.travelEarnings || 0),
+      Number(entry.totalEarnings || 0),
+      entry.isPublicHoliday ? 'Yes' : 'No',
+      String(entry.notes || ''),
+      String(entry.status || 'pending')
     ]);
   });
 }
@@ -138,15 +164,24 @@ function syncStaff(ss, staffList) {
     sheet.deleteRows(2, sheet.getLastRow() - 1);
   }
 
-  staffList.forEach(staff => {
+  staffList.forEach(function(staff) {
+    var rates = staff.rates || {};
     sheet.appendRow([
-      staff.id,
-      staff.name,
-      staff.role,
-      staff.email || '',
-      staff.phone || '',
-      staff.startDate || '',
-      staff.active ? 'Yes' : 'No'
+      String(staff.id || ''),
+      String(staff.name || ''),
+      String(staff.role || ''),
+      String(staff.email || ''),
+      String(staff.phone || ''),
+      String(staff.startDate || ''),
+      staff.active ? 'Yes' : 'No',
+      Number(rates.day || 65),
+      Number(rates.evening || 72),
+      Number(rates.night || 85),
+      Number(rates.sleepover || 250),
+      Number(rates.saturday || 95),
+      Number(rates.sunday || 125),
+      Number(rates.publicHoliday || 160),
+      Number(rates.km || 0.96)
     ]);
   });
 }
@@ -159,18 +194,10 @@ function syncClients(ss, clientList) {
     sheet.deleteRows(2, sheet.getLastRow() - 1);
   }
 
-  clientList.forEach(client => {
+  clientList.forEach(function(client) {
     sheet.appendRow([
-      client.id,
-      client.name,
-      client.rates?.day || 0,
-      client.rates?.evening || 0,
-      client.rates?.night || 0,
-      client.rates?.sleepover || 0,
-      client.rates?.saturday || 0,
-      client.rates?.sunday || 0,
-      client.rates?.publicHoliday || 0,
-      client.rates?.km || 0
+      String(client.id || ''),
+      String(client.name || '')
     ]);
   });
 }
@@ -182,10 +209,17 @@ function readSheet(ss, sheetName) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  return data.slice(1).map(row => {
+  return data.slice(1).map(function(row) {
     const obj = {};
-    headers.forEach((header, i) => {
-      obj[header.toLowerCase().replace(/ /g, '')] = row[i];
+    headers.forEach(function(header, i) {
+      const key = String(header).toLowerCase().replace(/\s+/g, '');
+      let val = row[i];
+      // Convert any Date objects to plain YYYY-MM-DD strings
+      // (Google Sheets stores dates as Date objects internally)
+      if (val instanceof Date) {
+        val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      }
+      obj[key] = val;
     });
     return obj;
   });
@@ -200,7 +234,7 @@ function readSheet(ss, sheetName) {
 2. Click the gear icon ⚙️ next to "Select type"
 3. Choose **Web app**
 4. Fill in:
-   - **Description:** "MIST Portal Sync"
+   - **Description:** "MIST Portal Sync v3.1"
    - **Execute as:** "Me"
    - **Who has access:** "Anyone"
 5. Click **Deploy**
@@ -209,6 +243,8 @@ function readSheet(ss, sheetName) {
 
 The URL looks like: `https://script.google.com/macros/s/XXXXX.../exec`
 
+> ⚠️ **Updating an existing deployment?** After replacing the script code, go to **Deploy → Manage deployments**, click the pencil icon on your existing deployment, change the version to **"New version"**, then click **Deploy**. This is critical — changes to the script code do NOT take effect on the old deployment automatically.
+
 ---
 
 ## Step 4: Configure MIST Portal
@@ -216,26 +252,29 @@ The URL looks like: `https://script.google.com/macros/s/XXXXX.../exec`
 1. Log into your MIST Portal as Manager
 2. Go to **Portal Settings**
 3. Paste the Web App URL in the **"Google Apps Script Webhook"** field
-4. Set the **Reporting Email** to `admin@mistau.com`
+4. Set the **Reporting Email** destination if needed
 5. Click **Save Sync Settings**
 
 ---
 
 ## Step 5: Test It!
 
-1. Go to **Shift Logs** and add a new entry
-2. Wait 2-3 seconds
-3. Check your Google Sheet - the data should appear!
-4. Look at the header bar - you'll see a "Syncing..." indicator when changes are being saved
+1. Go to **Shift Logs** and click **Push to Cloud** (cloud upload icon)
+2. Wait 3-5 seconds
+3. Check your Google Sheet — all timesheets, staff, and clients should appear
+4. On another device, log in and click **Pull from Cloud** (cloud download icon) in Shift Logs
+5. Staff, Clients, and Timesheets should all load correctly
 
 ---
 
 ## How It Works
 
-- **Auto-Sync:** Every time you add, edit, or delete data, it automatically syncs after 2 seconds
-- **All Data Types:** Timesheets, Staff, and Clients all sync together
-- **Status Indicator:** The header shows sync status (Syncing, Synced, Error)
-- **Offline Support:** Data is always saved locally first, so you never lose work
+- **Auto-Sync:** Every time you add, edit, or delete timesheet data, it automatically syncs after 2 seconds
+- **Push:** Manually push all data (Staff + Clients + Timesheets) to Google Sheets at any time
+- **Pull:** Load all data (Staff + Clients + Timesheets) from Google Sheets — use this on a new device to get the full team data
+- **Date format:** Dates are stored as plain `YYYY-MM-DD` text in the sheet (e.g. `2026-02-16`) to avoid timezone issues
+- **Public Holiday:** Shifts marked as Public Holiday sync as `Yes`/`No` in the sheet
+- **Staff Rates:** All hourly rates now live on the Staff sheet, not the Clients sheet
 
 ---
 
@@ -246,12 +285,22 @@ The URL looks like: `https://script.google.com/macros/s/XXXXX.../exec`
 - Verify the webhook URL is correct in Portal Settings
 - Make sure you authorized the Apps Script properly
 
+### Dates showing as "Invalid Date" in the app
+- The sheet's Date column is formatted as a Date cell. Fix: Select the Date column → Format → Number → Plain Text. Then re-push from the app.
+- Or redeploy the updated v3.1 script — it forces dates to be stored as strings.
+
+### Pull doesn't load Staff / Clients
+- Ensure the sheet tab names are exactly: `Timesheets`, `Staff`, `Clients` (case-sensitive)
+- Ensure headers are in row 1 exactly as shown above
+- Try accessing your webhook URL directly in a browser — you should see JSON with `timesheets`, `staff`, and `clients` arrays
+
 ### Data not appearing in Sheet
 - Ensure the sheet names are exactly: "Timesheets", "Staff", "Clients"
 - Check that headers are in row 1
 
-### Script errors
+### Script errors / "Exceeded maximum execution time"
 - Go to Extensions → Apps Script → Executions to see error logs
+- Very large datasets (500+ entries) may time out — contact admin@mistau.com
 
 ---
 
@@ -259,11 +308,15 @@ The URL looks like: `https://script.google.com/macros/s/XXXXX.../exec`
 
 - Your data is stored in YOUR Google account
 - Only you (and people you share the sheet with) can see it
-- The webhook URL should be kept private
-- Consider restricting sheet access to managers only
+- The webhook URL should be kept private — it gives anyone read/write access to your sheet
+- Consider restricting sheet sharing to managers only
 
 ---
 
 ## Need Help?
 
 Contact: admin@mistau.com
+
+---
+
+*Setup Guide v3.1 — Updated February 2026*

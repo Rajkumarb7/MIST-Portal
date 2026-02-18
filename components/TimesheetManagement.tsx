@@ -4,6 +4,7 @@ import { User, UserRole, TimesheetEntry, Client, Staff } from '../types';
 import { SERVICE_TYPES, SHIFT_TYPES } from '../constants';
 import { exportToCSV } from '../utils/csvExport';
 import { syncService } from '../services/sync';
+import { storage } from '../services/storage';
 import { Plus, Filter, FileSpreadsheet, Calendar, MapPin, ChevronRight, X, Trash2, CheckCircle, XCircle, Cloud, CloudDownload, Send, Edit3, Save, ChevronDown, RefreshCw } from 'lucide-react';
 
 interface TimesheetManagementProps {
@@ -12,9 +13,11 @@ interface TimesheetManagementProps {
   clients: Client[];
   staff: Staff[];
   onUpdate: (entries: TimesheetEntry[]) => void;
+  onUpdateStaff?: (staff: Staff[]) => void;
+  onUpdateClients?: (clients: Client[]) => void;
 }
 
-const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries, clients, staff, onUpdate }) => {
+const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries, clients, staff, onUpdate, onUpdateStaff, onUpdateClients }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimesheetEntry | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -254,30 +257,79 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
     setIsLoading(true);
     try {
       const data = await syncService.loadFromCloud(webhookUrl);
-      if (data && data.timesheets && data.timesheets.length > 0) {
-        // For staff: only load their own entries
-        // For manager: load all entries
+      if (!data) {
+        alert("No data found in cloud. Check your webhook URL.");
+        return;
+      }
+
+      let messages: string[] = [];
+
+      // --- Load Staff from cloud ---
+      if (data.staff && data.staff.length > 0) {
+        const loadedStaff: Staff[] = data.staff.map((s: any) => ({
+          id: s.id || s.ID,
+          name: s.name || s.Name,
+          role: s.role || s.Role || 'Support Worker',
+          email: s.email || s.Email || '',
+          phone: s.phone || s.Phone || '',
+          startDate: s.startdate || s.startDate || s.StartDate || '',
+          active: s.active === 'Yes' || s.active === true || s.Active === 'Yes',
+          rates: {
+            day: Number(s.dayrate || s.day || s.DayRate || 65),
+            evening: Number(s.eveningrate || s.evening || s.EveningRate || 72),
+            night: Number(s.nightrate || s.night || s.NightRate || 85),
+            sleepover: Number(s.sleepoverrate || s.sleepover || s.SleepoverRate || 250),
+            saturday: Number(s.saturdayrate || s.saturday || s.SaturdayRate || 95),
+            sunday: Number(s.sundayrate || s.sunday || s.SundayRate || 125),
+            publicHoliday: Number(s.holidayrate || s.publicholiday || s.PublicHolidayRate || 160),
+            km: Number(s.kmrate || s.km || s.KMRate || 0.96)
+          }
+        }));
+        storage.saveStaff(loadedStaff);
+        if (onUpdateStaff) onUpdateStaff(loadedStaff);
+        messages.push(`${loadedStaff.length} staff`);
+      }
+
+      // --- Load Clients from cloud ---
+      if (data.clients && data.clients.length > 0) {
+        const loadedClients: Client[] = data.clients.map((c: any) => ({
+          id: c.id || c.ID,
+          name: c.name || c.Name
+        }));
+        storage.saveClients(loadedClients);
+        if (onUpdateClients) onUpdateClients(loadedClients);
+        messages.push(`${loadedClients.length} clients`);
+      }
+
+      // --- Load Timesheets from cloud ---
+      // Use updated staff list for rate calculation (from cloud or current local)
+      const currentStaff: Staff[] = data.staff && data.staff.length > 0
+        ? storage.getStaff()
+        : staff;
+
+      if (data.timesheets && data.timesheets.length > 0) {
+        // For staff: only load their own entries; for manager: load all
         let loadedEntries = data.timesheets;
         if (user.role === UserRole.STAFF) {
           loadedEntries = loadedEntries.filter((e: any) => e.staffId === user.id || e.StaffID === user.id);
         }
 
-        // Transform and recalculate earnings using STAFF rates
+        // Transform and recalculate earnings using staff rates
         const transformedEntries: TimesheetEntry[] = loadedEntries.map((e: any) => {
-          // Get staff member for rate calculation
-          const staffMember = staff.find(s => s.id === (e.staffId || e.StaffID));
+          const staffMember = currentStaff.find(s => s.id === (e.staffId || e.StaffID));
           const hours = Number(e.hours || e.Hours || 0);
           const km = Number(e.km || e.KM || 0);
-          const date = e.date || e.Date || '';
+          // Normalize date: Google Sheets may return ISO timestamps like "2026-02-16T13:00:00.000Z"
+          const rawDate = String(e.date || e.Date || '');
+          const date = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.substring(0, 10);
           const shiftType = e.shiftType || e.ShiftType || 'day';
+          const isPublicHoliday = e.isPublicHoliday === true || e.isPublicHoliday === 'Yes' || e.IsPublicHoliday === 'Yes';
 
-          // Calculate earnings using staff rates
           let workEarnings = Number(e.workEarnings || e.WorkEarnings || 0);
           let travelEarnings = Number(e.travelEarnings || e.TravelEarnings || 0);
 
-          // If earnings are 0 or missing, recalculate from staff rates
           if (workEarnings === 0 && hours > 0 && staffMember?.rates) {
-            const rate = getHourlyRate(staffMember, shiftType, date);
+            const rate = getHourlyRate(staffMember, shiftType, date, isPublicHoliday);
             workEarnings = hours * rate;
           }
           if (travelEarnings === 0 && km > 0 && staffMember?.rates) {
@@ -301,6 +353,7 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
             workEarnings: workEarnings,
             travelEarnings: travelEarnings,
             totalEarnings: workEarnings + travelEarnings,
+            isPublicHoliday: isPublicHoliday,
             notes: e.notes || e.Notes || '',
             status: (e.status || e.Status || 'pending') as 'pending' | 'approved' | 'rejected',
             syncedToCloud: true
@@ -313,12 +366,16 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
 
         if (newEntries.length > 0) {
           onUpdate([...entries, ...newEntries]);
-          alert(`Loaded ${newEntries.length} new entries from cloud!`);
+          messages.push(`${newEntries.length} new timesheet entries`);
         } else {
-          alert("No new entries found in cloud. Your data is up to date.");
+          messages.push('timesheets already up to date');
         }
+      }
+
+      if (messages.length > 0) {
+        alert(`Cloud sync complete! Loaded: ${messages.join(', ')}.`);
       } else {
-        alert("No timesheet data found in cloud.");
+        alert("No data found in cloud.");
       }
     } catch (err) {
       console.error('Load from cloud error:', err);

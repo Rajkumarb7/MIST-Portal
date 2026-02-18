@@ -268,12 +268,14 @@ const App: React.FC = () => {
             <ClientManagement clients={clients} onUpdate={(c) => saveData(undefined, c)} />
           )}
           {activeTab === 'timesheet' && (
-            <TimesheetManagement 
-              user={authState.user!} 
-              entries={entries} 
-              clients={clients} 
+            <TimesheetManagement
+              user={authState.user!}
+              entries={entries}
+              clients={clients}
               staff={staff}
-              onUpdate={(e) => saveData(undefined, undefined, e)} 
+              onUpdate={(e) => saveData(undefined, undefined, e)}
+              onUpdateStaff={(s) => saveData(s)}
+              onUpdateClients={(c) => saveData(undefined, c)}
             />
           )}
           {activeTab === 'reports' && <Reports user={authState.user!} entries={entries} clients={clients} staff={staff} />}
