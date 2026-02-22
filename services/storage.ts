@@ -67,14 +67,30 @@ export const storage = {
   getEntries: (): TimesheetEntry[] => {
     const data = localStorage.getItem(KEYS.ENTRIES);
     if (!data) return [];
-    const entries: TimesheetEntry[] = JSON.parse(data);
-    // Sanitize: normalize any null/undefined/ISO dates to YYYY-MM-DD strings
-    // This prevents crashes in Dashboard and other components that call e.date.slice()
-    return entries.map((e: any) => {
-      const rawDate = String(e.date || '');
-      const date = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.substring(0, 10);
-      return { ...e, date: date || '' };
-    });
+    const raw: any[] = JSON.parse(data);
+
+    // Normalise dates and strip blank/corrupt rows (e.g. from empty Google Sheets rows)
+    const cleaned = raw
+      .map((e: any) => {
+        const rawDate = String(e.date || '');
+        const date = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.substring(0, 10);
+        return { ...e, date: date || '' };
+      })
+      .filter((e: any) => {
+        // Must have a valid YYYY-MM-DD date
+        if (!e.date || e.date.length < 8) return false;
+        if (isNaN(new Date(e.date).getTime())) return false;
+        // Must have a meaningful ID and at least a staff or client reference
+        if (!e.id) return false;
+        return true;
+      });
+
+    // Persist the cleaned list so junk rows don't come back on next load
+    if (cleaned.length !== raw.length) {
+      localStorage.setItem(KEYS.ENTRIES, JSON.stringify(cleaned));
+    }
+
+    return cleaned as TimesheetEntry[];
   },
   saveEntries: (entries: TimesheetEntry[]) => localStorage.setItem(KEYS.ENTRIES, JSON.stringify(entries)),
 

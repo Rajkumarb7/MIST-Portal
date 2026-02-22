@@ -363,16 +363,24 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
           };
         });
 
-        // Merge with existing entries (avoid duplicates by ID)
-        const existingIds = new Set(entries.map(e => e.id));
-        const newEntries = transformedEntries.filter(e => !existingIds.has(e.id));
+        // Strip blank rows (empty date = blank Google Sheets row)
+        const validEntries = transformedEntries.filter(e => {
+          if (!e.date || e.date.length < 8) return false;
+          if (isNaN(new Date(e.date).getTime())) return false;
+          if (!e.id) return false;
+          return true;
+        });
 
-        if (newEntries.length > 0) {
-          onUpdate([...entries, ...newEntries]);
-          messages.push(`${newEntries.length} new timesheet entries`);
-        } else {
-          messages.push('timesheets already up to date');
-        }
+        // Cloud is the source of truth — replace any local entry that exists in the
+        // cloud with the cloud version, and drop local entries that are no longer in
+        // the cloud (e.g. blank rows that were deleted from the sheet).
+        // Local-only entries (not yet pushed) are preserved.
+        const cloudIds = new Set(validEntries.map(e => e.id));
+        const localOnlyEntries = entries.filter(e => !cloudIds.has(e.id));
+        const merged = [...validEntries, ...localOnlyEntries];
+
+        onUpdate(merged);
+        messages.push(`${validEntries.length} timesheet entries from cloud`);
       }
 
       if (messages.length > 0) {
