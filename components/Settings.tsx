@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { User } from '../types';
-import { Settings as SettingsIcon, Save, Shield, Building, Cloud, Database, Mail, Download, Upload } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Shield, Building, Cloud, Database, Mail, Download, Upload, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { storage } from '../services/storage';
 
 interface SettingsProps {
@@ -15,6 +15,17 @@ const Settings: React.FC<SettingsProps> = ({ user }) => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  const clearAllData = () => {
+    // Remove all app data from localStorage (keep webhook URL, email, passwords, theme)
+    localStorage.removeItem('timesheet_staff_v3');
+    localStorage.removeItem('timesheet_clients_v3');
+    localStorage.removeItem('timesheet_entries_v3');
+    // Reset confirm state then reload so the app starts completely fresh
+    setConfirmClear(false);
+    window.location.reload();
+  };
 
   const saveIntegrations = () => {
     localStorage.setItem('mist_webhook_url', webhookUrl);
@@ -176,21 +187,70 @@ const Settings: React.FC<SettingsProps> = ({ user }) => {
               <Database size={20} className="text-warning" />
               <h4 className="font-bold text-mistNavy dark:text-white">Data Management</h4>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <button 
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <button
                 onClick={exportBackup}
                 className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-mistTeal transition-all group"
               >
                 <Download size={24} className="text-slate-400 group-hover:text-mistTeal mb-2" />
                 <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">Download Backup</span>
               </button>
-              <button 
+              <button
                 className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-warning transition-all group opacity-50 cursor-not-allowed"
                 title="Restore feature coming in V3.2"
               >
                 <Upload size={24} className="text-slate-400 group-hover:text-warning mb-2" />
                 <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">Restore Data</span>
               </button>
+            </div>
+
+            {/* Clear All Data */}
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-6">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Danger Zone</p>
+
+              {!confirmClear ? (
+                <button
+                  onClick={() => setConfirmClear(true)}
+                  className="w-full py-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all"
+                >
+                  <Trash2 size={18} /> Clear All Local Cache
+                </button>
+              ) : (
+                <div className="rounded-2xl border-2 border-red-400 bg-red-50 dark:bg-red-900/20 p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={20} className="text-red-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-black text-red-700 dark:text-red-400 text-sm">Confirm Clear All Data?</p>
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                        This will wipe <strong>all staff, client, and shift data</strong> from this browser. Your Google Sheet is unaffected — you can Pull fresh data again after clearing.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setConfirmClear(false)}
+                      className="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm transition-all hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={clearAllData}
+                      className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-red-600 transition-all"
+                    >
+                      <RefreshCw size={15} /> Yes, Clear & Restart
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Google Sheets instructions */}
+              <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-xs text-slate-500 dark:text-slate-400 space-y-1.5">
+                <p className="font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest text-[10px] mb-2">Also clear Google Sheet rows?</p>
+                <p>1. Open your Google Sheet</p>
+                <p>2. On each tab (Staff, Clients, Timesheets) — select all data rows <strong>below the header row</strong></p>
+                <p>3. Right-click → <strong>Delete rows</strong> (do NOT delete the header row)</p>
+                <p>4. Come back here, click <strong>Clear All Local Cache</strong>, then re-enter your data fresh</p>
+              </div>
             </div>
           </section>
           
