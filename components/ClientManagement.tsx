@@ -101,7 +101,7 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ clients, onUpdate }
               </div>
               <div>
                 <h4 className="font-extrabold text-xl tracking-tight text-mistNavy dark:text-white">{client.name}</h4>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">CLIENT ID: {client.id.slice(-6)}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">CLIENT ID: {String(client.id).slice(-6)}</p>
               </div>
             </div>
 

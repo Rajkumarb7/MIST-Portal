@@ -60,7 +60,8 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin, staff, clients, onDa
         // Transform the data from Google Sheets format
         // Staff now includes rates (moved from clients)
         const loadedStaff: Staff[] = (data.staff || []).map((s: any) => ({
-          id: s.id || s.ID,
+          // Coerce to string — Google Sheets returns numeric IDs as JS numbers
+          id: String(s.id ?? s.ID ?? ''),
           name: s.name || s.Name,
           role: s.role || s.Role || 'Support Worker',
           email: s.email || s.Email || '',
@@ -81,9 +82,10 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin, staff, clients, onDa
 
         // Clients now only have id and name (rates moved to staff)
         const loadedClients: Client[] = (data.clients || []).map((c: any) => ({
-          id: c.id || c.ID,
-          name: c.name || c.Name
-        }));
+          // Coerce to string — Google Sheets returns numeric IDs as JS numbers
+          id: String(c.id ?? c.ID ?? ''),
+          name: String(c.name || c.Name || '')
+        })).filter((c: Client) => c.id && c.name);
 
         // Save to localStorage
         localStorage.setItem('mist_webhook_url', webhookUrl.trim());

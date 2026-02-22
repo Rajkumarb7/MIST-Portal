@@ -25,9 +25,11 @@ export const storage = {
     const data = localStorage.getItem(KEYS.STAFF);
     if (data) {
       // Ensure all staff have rates (migration for existing data)
+      // Also ensure id is always a string — Google Sheets may return numeric IDs
       const staff = JSON.parse(data);
       return staff.map((s: Staff) => ({
         ...s,
+        id: String(s.id),
         rates: s.rates || DEFAULT_RATES
       }));
     }
@@ -43,7 +45,8 @@ export const storage = {
       // Sanitize client data - only keep id and name (rates were moved to staff)
       const clients = JSON.parse(data);
       return clients.map((c: any) => ({
-        id: c.id || String(Date.now()),
+        // Always stringify id — Google Sheets returns numeric IDs as JS numbers
+        id: String(c.id ?? Date.now()),
         name: String(c.name || 'Unknown Client')
       })).filter((c: Client) => {
         // Filter out clients with numeric-only names (likely corrupted rate data)

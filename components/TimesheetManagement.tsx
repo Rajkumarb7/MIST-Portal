@@ -267,7 +267,8 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
       // --- Load Staff from cloud ---
       if (data.staff && data.staff.length > 0) {
         const loadedStaff: Staff[] = data.staff.map((s: any) => ({
-          id: s.id || s.ID,
+          // Coerce to string — Google Sheets returns numeric IDs as JS numbers
+          id: String(s.id ?? s.ID ?? ''),
           name: s.name || s.Name,
           role: s.role || s.Role || 'Support Worker',
           email: s.email || s.Email || '',
@@ -293,9 +294,10 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
       // --- Load Clients from cloud ---
       if (data.clients && data.clients.length > 0) {
         const loadedClients: Client[] = data.clients.map((c: any) => ({
-          id: c.id || c.ID,
-          name: c.name || c.Name
-        }));
+          // Coerce to string — Google Sheets returns numeric IDs as JS numbers
+          id: String(c.id ?? c.ID ?? ''),
+          name: String(c.name || c.Name || '')
+        })).filter((c: Client) => c.id && c.name);
         storage.saveClients(loadedClients);
         if (onUpdateClients) onUpdateClients(loadedClients);
         messages.push(`${loadedClients.length} clients`);
@@ -337,11 +339,12 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
           }
 
           return {
-            id: e.id || e.ID || Date.now().toString(),
+            // Coerce all IDs to strings — Google Sheets may return numbers
+            id: String(e.id ?? e.ID ?? Date.now()),
             date: date,
-            staffId: e.staffId || e.StaffID || '',
+            staffId: String(e.staffId ?? e.StaffID ?? ''),
             staffName: e.staffName || e.StaffName || staffMember?.name || '',
-            clientId: e.clientId || e.ClientID || '',
+            clientId: String(e.clientId ?? e.ClientID ?? ''),
             clientName: e.clientName || e.ClientName || '',
             serviceType: e.serviceType || e.ServiceType || '',
             shiftType: shiftType as 'day' | 'evening' | 'night' | 'sleepover',
