@@ -1,13 +1,40 @@
 
 import React, { useState } from 'react';
-import { Staff, Rates } from '../types';
+import { Staff, Rates, TimesheetEntry } from '../types';
 import { STAFF_ROLES } from '../constants';
 import { Plus, Search, Trash2, Edit3, Mail, Phone, Calendar, X, Save, UserCheck, DollarSign } from 'lucide-react';
 
 interface StaffManagementProps {
   staff: Staff[];
   onUpdate: (staff: Staff[]) => void;
+  entries?: TimesheetEntry[];
+  onUpdateEntries?: (entries: TimesheetEntry[]) => void;
 }
+
+// Recalculate hourly rate from rates object given shift context
+const calcRate = (rates: Rates, shiftType: string, dateStr: string, isPublicHoliday?: boolean): number => {
+  if (!rates) return 65;
+  if (isPublicHoliday) return rates.publicHoliday || 160;
+  const day = new Date(dateStr).getDay();
+  if (shiftType === 'sleepover') return rates.sleepover || 250;
+  if (day === 0) return rates.sunday || 125;
+  if (day === 6) return rates.saturday || 95;
+  if (shiftType === 'night') return rates.night || 85;
+  if (shiftType === 'evening') return rates.evening || 72;
+  return rates.day || 65;
+};
+
+// Recalculate hours from 24h time strings
+const calcHours = (start: string, end: string): number => {
+  if (!start || !end || !start.includes(':') || !end.includes(':')) return 0;
+  const [sH, sM] = start.split(':').map(Number);
+  const [eH, eM] = end.split(':').map(Number);
+  if (isNaN(sH) || isNaN(sM) || isNaN(eH) || isNaN(eM)) return 0;
+  let startMin = sH * 60 + sM;
+  let endMin = eH * 60 + eM;
+  if (endMin < startMin) endMin += 24 * 60;
+  return (endMin - startMin) / 60;
+};
 
 // Default rates for new staff members
 const DEFAULT_RATES: Rates = {
@@ -21,7 +48,7 @@ const DEFAULT_RATES: Rates = {
   km: 0.96
 };
 
-const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onUpdate }) => {
+const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onUpdate, entries, onUpdateEntries }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,6 +75,21 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onUpdate }) =>
     if (!editingStaff) return;
     const updated = staff.map(s => s.id === editingStaff.id ? { ...editingStaff } : s);
     onUpdate(updated);
+
+    // Auto-recalculate earnings for all entries belonging to this staff member
+    if (entries && onUpdateEntries && editingStaff.rates) {
+      const newRates = editingStaff.rates;
+      const recalculated = entries.map(e => {
+        if (e.staffId !== editingStaff.id) return e;
+        const hours = calcHours(e.startTime, e.endTime);
+        const rate = calcRate(newRates, e.shiftType || 'day', e.date, e.isPublicHoliday);
+        const workEarnings = hours * rate;
+        const travelEarnings = (e.km || 0) * (newRates.km || 0.96);
+        return { ...e, hours, workEarnings, travelEarnings, totalEarnings: workEarnings + travelEarnings };
+      });
+      onUpdateEntries(recalculated);
+    }
+
     setEditingStaff(null);
   };
 

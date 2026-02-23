@@ -88,22 +88,26 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
 
   // Time conversion helpers for AM/PM format
   const formatTimeForDisplay = (time24: string) => {
-    const [hours, minutes] = time24.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const hours12 = hours % 12 || 12;
-    return { hours: hours12.toString().padStart(2, '0'), minutes: minutes.toString().padStart(2, '0'), period };
+    if (!time24 || !time24.includes(':')) return { hours: '09', minutes: '00', period: 'AM' };
+    const [h, m] = time24.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return { hours: '09', minutes: '00', period: 'AM' };
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hours12 = h % 12 || 12;
+    return { hours: hours12.toString().padStart(2, '0'), minutes: m.toString().padStart(2, '0'), period };
   };
 
   const formatTimeTo24 = (hours: string, minutes: string, period: string) => {
-    let h = parseInt(hours);
+    let h = parseInt(hours) || 0;
     if (period === 'PM' && h !== 12) h += 12;
     if (period === 'AM' && h === 12) h = 0;
-    return `${h.toString().padStart(2, '0')}:${minutes}`;
+    return `${h.toString().padStart(2, '0')}:${minutes || '00'}`;
   };
 
   const calculateHours = (start: string, end: string) => {
+    if (!start || !end || !start.includes(':') || !end.includes(':')) return 0;
     const [sH, sM] = start.split(':').map(Number);
     const [eH, eM] = end.split(':').map(Number);
+    if (isNaN(sH) || isNaN(sM) || isNaN(eH) || isNaN(eM)) return 0;
     let startMin = sH * 60 + sM;
     let endMin = eH * 60 + eM;
     if (endMin < startMin) endMin += 24 * 60;

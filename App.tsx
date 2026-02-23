@@ -49,11 +49,14 @@ const App: React.FC = () => {
   // Sync status
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  // Flag: startup pull from Google Sheets has completed (or no webhook configured)
+  // Auto-sync is gated on this so we never push stale/default data before the pull finishes
+  const [startupPullDone, setStartupPullDone] = useState(false);
 
   // Get webhook URL from localStorage
   const getWebhookUrl = useCallback(() => localStorage.getItem('mist_webhook_url'), []);
 
-  // Load initial data
+  // Load initial data from localStorage
   useEffect(() => {
     setStaff(storage.getStaff());
     setClients(storage.getClients());
@@ -61,8 +64,68 @@ const App: React.FC = () => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
-  // Auto-sync when data changes
+  // On every startup: silently pull master data (staff + clients) from Google Sheets
+  // so rates and client names are always up to date without manual "Pull" clicks.
   useEffect(() => {
+    const webhookUrl = localStorage.getItem('mist_webhook_url');
+    if (!webhookUrl) {
+      setStartupPullDone(true); // No webhook — nothing to pull, allow auto-sync immediately
+      return;
+    }
+
+    syncService.loadFromCloud(webhookUrl)
+      .then(data => {
+        if (!data) return;
+
+        if (data.staff && (data.staff as any[]).length > 0) {
+          const loadedStaff: Staff[] = (data.staff as any[]).map((s: any) => ({
+            id: String(s.id ?? s.ID ?? ''),
+            name: s.name || s.Name || '',
+            role: s.role || s.Role || 'Support Worker',
+            email: s.email || s.Email || '',
+            phone: s.phone || s.Phone || '',
+            startDate: s.startdate || s.startDate || '',
+            active: s.active === 'Yes' || s.active === true,
+            rates: {
+              day:          Number(s.dayrate)       || 65,
+              evening:      Number(s.eveningrate)   || 72,
+              night:        Number(s.nightrate)     || 85,
+              sleepover:    Number(s.sleepoverrate) || 250,
+              saturday:     Number(s.saturdayrate)  || 95,
+              sunday:       Number(s.sundayrate)    || 125,
+              publicHoliday:Number(s.holidayrate)   || 160,
+              km:           Number(s.kmrate)        || 0.96,
+            }
+          })).filter((s: any) => s.id && s.name);
+
+          if (loadedStaff.length > 0) {
+            storage.saveStaff(loadedStaff);
+            setStaff(loadedStaff);
+          }
+        }
+
+        if (data.clients && (data.clients as any[]).length > 0) {
+          const loadedClients: Client[] = (data.clients as any[]).map((c: any) => ({
+            id: String(c.id ?? c.ID ?? ''),
+            name: String(c.name || c.Name || '')
+          })).filter((c: any) => c.id && c.name);
+
+          if (loadedClients.length > 0) {
+            storage.saveClients(loadedClients);
+            setClients(loadedClients);
+          }
+        }
+      })
+      .catch(() => { /* startup pull failure is non-fatal — localStorage data is used */ })
+      .finally(() => setStartupPullDone(true));
+  }, []); // runs once on mount only
+
+  // Auto-sync: push local data to Google Sheets whenever it changes.
+  // Gated on startupPullDone so we never accidentally overwrite the sheet
+  // with stale localStorage defaults before the startup pull has finished.
+  useEffect(() => {
+    if (!startupPullDone) return;
+
     const webhookUrl = getWebhookUrl();
     if (!webhookUrl || (staff.length === 0 && clients.length === 0 && entries.length === 0)) {
       return; // Don't sync if no webhook or no data
@@ -86,7 +149,7 @@ const App: React.FC = () => {
     }, 2000); // 2 second debounce
 
     return () => clearTimeout(syncTimeout);
-  }, [staff, clients, entries, getWebhookUrl]);
+  }, [staff, clients, entries, getWebhookUrl, startupPullDone]);
 
   const handleLogin = (role: UserRole, id: string, name: string) => {
     setAuthState({
@@ -262,7 +325,12 @@ const App: React.FC = () => {
         <div className="p-4 md:p-10 max-w-7xl mx-auto w-full">
           {activeTab === 'dashboard' && <Dashboard user={authState.user!} entries={entries} clients={clients} staff={staff} onUpdateEntries={(e) => saveData(undefined, undefined, e)} />}
           {activeTab === 'staff' && authState.user?.role === UserRole.MANAGER && (
-            <StaffManagement staff={staff} onUpdate={(s) => saveData(s)} />
+            <StaffManagement
+              staff={staff}
+              onUpdate={(s) => saveData(s)}
+              entries={entries}
+              onUpdateEntries={(e) => saveData(undefined, undefined, e)}
+            />
           )}
           {activeTab === 'clients' && authState.user?.role === UserRole.MANAGER && (
             <ClientManagement clients={clients} onUpdate={(c) => saveData(undefined, c)} />
