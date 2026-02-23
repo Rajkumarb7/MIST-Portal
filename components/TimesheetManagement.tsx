@@ -836,48 +836,155 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
       {/* Edit Modal */}
       {editingEntry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-mistNavy/40 backdrop-blur-md">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl overflow-hidden">
-            <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-              <h3 className="text-lg font-black">Edit Shift Entry</h3>
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 shrink-0">
+              <h3 className="text-lg font-black flex items-center gap-2 text-mistNavy dark:text-white">
+                <Edit3 size={18} className="text-mistTeal" /> Edit Shift Entry
+              </h3>
               <button onClick={() => setEditingEntry(null)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-8 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+
+            <div className="p-8 space-y-6 overflow-y-auto">
+
+              {/* Row 1: Date + Public Holiday */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</label>
+                <input
+                  type="date"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-mistTeal outline-none font-bold"
+                  value={editingEntry.date}
+                  onChange={e => setEditingEntry({ ...editingEntry, date: e.target.value })}
+                />
+                {editingEntry.date && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-mistTeal">
+                      {new Date(editingEntry.date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editingEntry.isPublicHoliday || false}
+                        onChange={e => setEditingEntry({ ...editingEntry, isPublicHoliday: e.target.checked })}
+                        className="w-4 h-4 rounded border-2 border-mistTeal text-mistTeal focus:ring-mistTeal focus:ring-2"
+                      />
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Public Holiday</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Row 2: Client + Staff (manager only) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase">Hours</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-mistTeal outline-none font-bold"
-                    value={editingEntry.hours}
-                    onChange={e => setEditingEntry({ ...editingEntry, hours: parseFloat(e.target.value) || 0 })}
-                  />
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">NDIS Client</label>
+                  <select
+                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-mistTeal outline-none font-bold appearance-none"
+                    value={editingEntry.clientId}
+                    onChange={e => setEditingEntry({ ...editingEntry, clientId: e.target.value })}
+                  >
+                    <option value="">Select client...</option>
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                {user.role === UserRole.MANAGER && (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Worker</label>
+                    <select
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-mistTeal outline-none font-bold appearance-none"
+                      value={editingEntry.staffId}
+                      onChange={e => setEditingEntry({ ...editingEntry, staffId: e.target.value })}
+                    >
+                      <option value="">Choose worker...</option>
+                      {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Row 3: Service Type + Shift Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Type</label>
+                  <select
+                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-mistTeal outline-none font-bold appearance-none"
+                    value={editingEntry.serviceType}
+                    onChange={e => setEditingEntry({ ...editingEntry, serviceType: e.target.value })}
+                  >
+                    {SERVICE_TYPES.map(t => <option key={t.id} value={t.id}>{t.icon} {t.name}</option>)}
+                  </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase">KMs</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-mistTeal outline-none font-bold"
-                    value={editingEntry.km}
-                    onChange={e => setEditingEntry({ ...editingEntry, km: parseFloat(e.target.value) || 0 })}
-                  />
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Type</label>
+                  <select
+                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-mistTeal outline-none font-bold appearance-none"
+                    value={editingEntry.shiftType}
+                    onChange={e => {
+                      const shiftType = e.target.value as 'day' | 'evening' | 'night' | 'sleepover';
+                      if (shiftType === 'sleepover') {
+                        setEditingEntry({ ...editingEntry, shiftType, startTime: '23:00', endTime: '07:00' });
+                      } else {
+                        setEditingEntry({ ...editingEntry, shiftType });
+                      }
+                    }}
+                  >
+                    {SHIFT_TYPES.map(t => <option key={t.id} value={t.id}>{t.icon} {t.name}</option>)}
+                  </select>
                 </div>
               </div>
+
+              {/* Row 4: Start Time + End Time */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <TimeInput
+                  label="Start Time"
+                  value={editingEntry.startTime || '09:00'}
+                  onChange={val => setEditingEntry({ ...editingEntry, startTime: val })}
+                />
+                <TimeInput
+                  label="End Time"
+                  value={editingEntry.endTime || '17:00'}
+                  onChange={val => setEditingEntry({ ...editingEntry, endTime: val })}
+                />
+              </div>
+
+              {/* Row 5: KM */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase">Notes</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Travel (KM)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-mistTeal outline-none font-bold"
+                  value={editingEntry.km}
+                  onChange={e => setEditingEntry({ ...editingEntry, km: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+
+              {/* Row 6: Notes */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Notes</label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-mistTeal outline-none font-medium resize-none"
                   value={editingEntry.notes}
                   onChange={e => setEditingEntry({ ...editingEntry, notes: e.target.value })}
                 />
               </div>
-              <div className="flex justify-end gap-4 pt-4">
-                <button onClick={() => setEditingEntry(null)} className="px-6 py-3 text-slate-500 font-bold">Cancel</button>
-                <button onClick={handleEditSave} className="px-8 py-3 bg-mistNavy text-white rounded-xl font-black flex items-center gap-2">
+
+              {/* Hours preview */}
+              {editingEntry.startTime && editingEntry.endTime && (
+                <div className="p-4 bg-mistTeal/10 rounded-xl flex items-center justify-between">
+                  <span className="text-xs font-black text-mistTeal uppercase tracking-widest">Calculated Hours</span>
+                  <span className="text-lg font-black text-mistNavy dark:text-white">
+                    {calculateHours(editingEntry.startTime, editingEntry.endTime).toFixed(2)} hrs
+                  </span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-4 pt-2">
+                <button onClick={() => setEditingEntry(null)} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">Cancel</button>
+                <button onClick={handleEditSave} className="px-8 py-3 bg-mistNavy text-white rounded-xl font-black flex items-center gap-2 hover:bg-mistNavy/90 transition-all">
                   <Save size={18} /> Save Changes
                 </button>
               </div>
