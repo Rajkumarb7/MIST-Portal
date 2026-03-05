@@ -92,7 +92,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ entries, clients, staff }) => {
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#1a1a1a', border: 'none', borderRadius: '12px', color: '#fff' }}
+                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', fontSize: '12px', color: '#f1f5f9' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: 600 }}
+                    itemStyle={{ color: '#f1f5f9' }}
                   />
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
@@ -123,7 +125,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ entries, clients, staff }) => {
                     fillOpacity={0.6}
                   />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#1a1a1a', border: 'none', borderRadius: '12px', color: '#fff' }}
+                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', fontSize: '12px', color: '#f1f5f9' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: 600 }}
+                    itemStyle={{ color: '#f1f5f9' }}
+                    formatter={(value: number) => [`${Number(value).toFixed(1)}h`, 'Hours']}
                   />
                 </RadarChart>
               </ResponsiveContainer>

@@ -408,7 +408,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
                   <XAxis dataKey="name" stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', fontSize: '12px', color: '#f1f5f9' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: 600 }}
+                    itemStyle={{ color: '#f1f5f9' }}
+                    formatter={(value: number) => [`${Number(value).toFixed(1)}h`, 'Hours']}
+                  />
                   <Area type="monotone" dataKey="hours" stroke="#00a9ce" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -437,8 +442,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
                     <XAxis dataKey="name" stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
                     <YAxis stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#1a1a1a', border: 'none', borderRadius: '12px', color: '#fff' }}
-                      formatter={(value: number) => [`$${value.toFixed(2)}`, 'Earnings']}
+                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', fontSize: '12px', color: '#f1f5f9' }}
+                      labelStyle={{ color: '#94a3b8', fontWeight: 600 }}
+                      itemStyle={{ color: '#f1f5f9' }}
+                      formatter={(value: number) => [`$${Number(value).toFixed(2)}`, 'Earnings']}
                     />
                     <Bar dataKey="earnings" fill="url(#colorEarnings)" radius={[8, 8, 0, 0]} />
                   </BarChart>
@@ -554,8 +561,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number) => `$${value.toFixed(2)}`}
-                    contentStyle={{ backgroundColor: '#1a1a1a', border: 'none', borderRadius: '12px', color: '#fff' }}
+                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', fontSize: '12px', color: '#f1f5f9' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: 600 }}
+                    itemStyle={{ color: '#f1f5f9' }}
+                    formatter={(value: number) => [`$${Number(value).toFixed(2)}`, 'Earnings']}
                   />
                 </PieChart>
               </ResponsiveContainer>
