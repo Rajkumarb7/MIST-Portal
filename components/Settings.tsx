@@ -16,6 +16,7 @@ const Settings: React.FC<SettingsProps> = ({ user }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
+  const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
 
   const clearAllData = () => {
     // Remove all app data from localStorage (keep webhook URL, email, passwords, theme)
@@ -46,6 +47,37 @@ const Settings: React.FC<SettingsProps> = ({ user }) => {
     a.href = url;
     a.download = `mist_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
+  };
+
+  const restoreBackup = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target?.result as string);
+          if (!data.staff || !data.clients || !data.entries) {
+            setRestoreStatus('error');
+            setTimeout(() => setRestoreStatus(null), 4000);
+            return;
+          }
+          storage.saveStaff(data.staff);
+          storage.saveClients(data.clients);
+          storage.saveEntries(data.entries);
+          setRestoreStatus('success');
+          setTimeout(() => window.location.reload(), 1500);
+        } catch {
+          setRestoreStatus('error');
+          setTimeout(() => setRestoreStatus(null), 4000);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   };
 
   const changePassword = () => {
@@ -196,11 +228,14 @@ const Settings: React.FC<SettingsProps> = ({ user }) => {
                 <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">Download Backup</span>
               </button>
               <button
-                className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-warning transition-all group opacity-50 cursor-not-allowed"
-                title="Restore feature coming in V3.2"
+                onClick={restoreBackup}
+                className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-warning transition-all group"
+                title="Restore from a previously downloaded backup file"
               >
-                <Upload size={24} className="text-slate-400 group-hover:text-warning mb-2" />
-                <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">Restore Data</span>
+                <Upload size={24} className={`mb-2 transition-colors ${restoreStatus === 'success' ? 'text-green-500' : restoreStatus === 'error' ? 'text-red-500' : 'text-slate-400 group-hover:text-warning'}`} />
+                <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">
+                  {restoreStatus === 'success' ? 'Restored!' : restoreStatus === 'error' ? 'Invalid File' : 'Restore Data'}
+                </span>
               </button>
             </div>
 
