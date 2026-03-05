@@ -103,7 +103,10 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
                   <YAxis dataKey="name" type="category" stroke="#666" fontSize={12} width={100} axisLine={false} tickLine={false} />
                   <Tooltip
                     cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                    contentStyle={{ backgroundColor: '#111', border: 'none', borderRadius: '12px', fontSize: '12px' }}
+                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', fontSize: '12px', color: '#f1f5f9' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}
+                    itemStyle={{ color: '#f1f5f9' }}
+                    formatter={(value: number) => [`$${Number(value).toFixed(2)}`, 'Earnings']}
                   />
                   <Bar dataKey="value" radius={[0, 10, 10, 0]} barSize={20}>
                     {clientBreakdown.map((_, index) => (
