@@ -33,9 +33,7 @@ export const storage = {
         rates: s.rates || DEFAULT_RATES
       }));
     }
-    return [
-      { id: '1', name: 'Raj Kumar', role: 'team-leader', email: 'raj@example.com', phone: '0400000000', startDate: '2024-01-01', active: true, rates: DEFAULT_RATES }
-    ];
+    return []; // No hardcoded defaults — new devices start empty and pull from Cloud
   },
   saveStaff: (staff: Staff[]) => localStorage.setItem(KEYS.STAFF, JSON.stringify(staff)),
 
@@ -54,9 +52,7 @@ export const storage = {
         return c.id && c.name && c.name !== 'Unknown Client' && !isNumericOnly;
       });
     }
-    return [
-      { id: 'c1', name: 'John Doe' }
-    ];
+    return []; // No hardcoded defaults — new devices start empty and pull from Cloud
   },
   saveClients: (clients: Client[]) => {
     // Only save id and name for clients

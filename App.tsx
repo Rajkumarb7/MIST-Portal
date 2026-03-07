@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, UserRole, AuthState, Staff, Client, TimesheetEntry } from './types';
 import { storage } from './services/storage';
 import { syncService } from './services/sync';
@@ -46,15 +46,12 @@ const App: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
 
-  // Sync status
+  // Sync status — updated only by explicit manual Push (in TimesheetManagement)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
-  // Flag: startup pull from Google Sheets has completed (or no webhook configured)
-  // Auto-sync is gated on this so we never push stale/default data before the pull finishes
-  const [startupPullDone, setStartupPullDone] = useState(false);
 
   // Get webhook URL from localStorage
-  const getWebhookUrl = useCallback(() => localStorage.getItem('mist_webhook_url'), []);
+  const getWebhookUrl = () => localStorage.getItem('mist_webhook_url');
 
   // Load initial data from localStorage
   useEffect(() => {
@@ -116,40 +113,11 @@ const App: React.FC = () => {
           }
         }
       })
-      .catch(() => { /* startup pull failure is non-fatal — localStorage data is used */ })
-      .finally(() => setStartupPullDone(true));
+      .catch(() => { /* startup pull failure is non-fatal — localStorage data is used */ });
   }, []); // runs once on mount only
-
-  // Auto-sync: push local data to Google Sheets whenever it changes.
-  // Gated on startupPullDone so we never accidentally overwrite the sheet
-  // with stale localStorage defaults before the startup pull has finished.
-  useEffect(() => {
-    if (!startupPullDone) return;
-
-    const webhookUrl = getWebhookUrl();
-    if (!webhookUrl || (staff.length === 0 && clients.length === 0 && entries.length === 0)) {
-      return; // Don't sync if no webhook or no data
-    }
-
-    setSyncStatus('syncing');
-
-    // Use debounced auto-sync
-    const syncTimeout = setTimeout(async () => {
-      try {
-        await syncService.syncAllData(webhookUrl, { timesheets: entries, staff, clients });
-        setSyncStatus('synced');
-        setLastSyncTime(new Date().toLocaleTimeString());
-        // Reset to idle after 3 seconds
-        setTimeout(() => setSyncStatus('idle'), 3000);
-      } catch (error) {
-        console.error('Auto-sync failed:', error);
-        setSyncStatus('error');
-        setTimeout(() => setSyncStatus('idle'), 5000);
-      }
-    }, 2000); // 2 second debounce
-
-    return () => clearTimeout(syncTimeout);
-  }, [staff, clients, entries, getWebhookUrl, startupPullDone]);
+  // NOTE: Auto-sync removed. Only the startup read-pull above runs automatically.
+  // Pushing to Google Sheets is explicit only — via the "Push to Cloud" button in Shift Logs.
+  // This prevents multiple browsers from overwriting each other's data.
 
   const handleLogin = (role: UserRole, id: string, name: string) => {
     setAuthState({
