@@ -61,20 +61,23 @@ const App: React.FC = () => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
-  // On every startup: silently pull master data (staff + clients) from Google Sheets
-  // so rates and client names are always up to date without manual "Pull" clicks.
+  // On startup: pull client list from cloud (always fresh).
+  // Staff (including rates) are only loaded from cloud on a NEW device (empty localStorage).
+  // This prevents rates set by the manager from being overwritten on every page refresh.
+  // To force-refresh staff data on an existing device, use the "Pull from Cloud" button.
   useEffect(() => {
     const webhookUrl = localStorage.getItem('mist_webhook_url');
-    if (!webhookUrl) {
-      setStartupPullDone(true); // No webhook — nothing to pull, allow auto-sync immediately
-      return;
-    }
+    if (!webhookUrl) return;
+
+    // Check NOW (before async pull) whether this device already has local staff data
+    const hasLocalStaff = storage.getStaff().length > 0;
 
     syncService.loadFromCloud(webhookUrl)
       .then(data => {
         if (!data) return;
 
-        if (data.staff && (data.staff as any[]).length > 0) {
+        // Only overwrite staff from cloud on a fresh device — preserves manager-set rates
+        if (!hasLocalStaff && data.staff && (data.staff as any[]).length > 0) {
           const loadedStaff: Staff[] = (data.staff as any[]).map((s: any) => ({
             id: String(s.id ?? s.ID ?? ''),
             name: s.name || s.Name || '',
@@ -84,14 +87,14 @@ const App: React.FC = () => {
             startDate: s.startdate || s.startDate || '',
             active: s.active === 'Yes' || s.active === true,
             rates: {
-              day:          Number(s.dayrate)       || 65,
-              evening:      Number(s.eveningrate)   || 72,
-              night:        Number(s.nightrate)     || 85,
-              sleepover:    Number(s.sleepoverrate) || 250,
-              saturday:     Number(s.saturdayrate)  || 95,
-              sunday:       Number(s.sundayrate)    || 125,
-              publicHoliday:Number(s.holidayrate)   || 160,
-              km:           Number(s.kmrate)        || 0.96,
+              day:          Number(s.dayrate)        || 65,
+              evening:      Number(s.eveningrate)    || 72,
+              night:        Number(s.nightrate)      || 85,
+              sleepover:    Number(s.sleepoverrate)  || 250,
+              saturday:     Number(s.saturdayrate)   || 95,
+              sunday:       Number(s.sundayrate)     || 125,
+              publicHoliday:Number(s.holidayrate)    || 160,
+              km:           Number(s.kmrate)         || 0.96,
             }
           })).filter((s: any) => s.id && s.name);
 
@@ -101,6 +104,7 @@ const App: React.FC = () => {
           }
         }
 
+        // Always refresh client list from cloud (shared across all devices)
         if (data.clients && (data.clients as any[]).length > 0) {
           const loadedClients: Client[] = (data.clients as any[]).map((c: any) => ({
             id: String(c.id ?? c.ID ?? ''),
@@ -115,9 +119,8 @@ const App: React.FC = () => {
       })
       .catch(() => { /* startup pull failure is non-fatal — localStorage data is used */ });
   }, []); // runs once on mount only
-  // NOTE: Auto-sync removed. Only the startup read-pull above runs automatically.
-  // Pushing to Google Sheets is explicit only — via the "Push to Cloud" button in Shift Logs.
-  // This prevents multiple browsers from overwriting each other's data.
+  // NOTE: Auto-sync removed. Push is explicit only — "Push to Cloud" button in Shift Logs.
+  // Staff rates are preserved locally; use "Pull from Cloud" to force-refresh from sheet.
 
   const handleLogin = (role: UserRole, id: string, name: string) => {
     setAuthState({
