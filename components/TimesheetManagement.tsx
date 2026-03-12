@@ -332,23 +332,37 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
         // For staff: only load their own entries; for manager: load all
         let loadedEntries = data.timesheets;
         if (user.role === UserRole.STAFF) {
-          loadedEntries = loadedEntries.filter((e: any) => e.staffId === user.id || e.StaffID === user.id);
+          loadedEntries = loadedEntries.filter((e: any) => e.staffid === user.id || e.staffId === user.id || e.StaffID === user.id);
         }
 
-        // Transform and recalculate earnings using staff rates
+        // Transform and recalculate earnings using staff rates.
+        // readSheet() returns ALL headers as lowercase (e.g. "staffName" → "staffname"),
+        // so every multi-word field needs BOTH the lowercase AND camelCase fallback.
         const transformedEntries: TimesheetEntry[] = loadedEntries.map((e: any) => {
-          const staffMember = currentStaff.find(s => s.id === (e.staffId || e.StaffID));
+          // IDs — lowercase keys from readSheet take priority
+          const staffId  = String(e.staffid  ?? e.staffId  ?? e.StaffID  ?? '');
+          const clientId = String(e.clientid ?? e.clientId ?? e.ClientID ?? '');
+
+          const staffMember = currentStaff.find(s => s.id === staffId);
           const hours = Number(e.hours || e.Hours || 0);
-          const km = Number(e.km || e.KM || 0);
-          // Normalize date: Google Sheets may return ISO timestamps like "2026-02-16T13:00:00.000Z"
+          const km    = Number(e.km    || e.KM    || 0);
+
+          // Normalize date
           const rawDate = String(e.date || e.Date || '');
           const date = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.substring(0, 10);
-          const shiftType = e.shiftType || e.ShiftType || 'day';
-          const isPublicHoliday = e.isPublicHoliday === true || e.isPublicHoliday === 'Yes' || e.IsPublicHoliday === 'Yes';
 
-          let workEarnings = Number(e.workEarnings || e.WorkEarnings || 0);
-          let travelEarnings = Number(e.travelEarnings || e.TravelEarnings || 0);
+          // Shift type & holiday — lowercase first
+          const shiftType = e.shifttype || e.shiftType || e.ShiftType || 'day';
+          const isPublicHoliday =
+            e.ispublicholiday === true || e.ispublicholiday === 'Yes' ||
+            e.isPublicHoliday === true || e.isPublicHoliday === 'Yes' ||
+            e.IsPublicHoliday === 'Yes';
 
+          // Earnings — lowercase keys from readSheet
+          let workEarnings   = Number(e.workearnings   ?? e.workEarnings   ?? e.WorkEarnings   ?? 0);
+          let travelEarnings = Number(e.travelearnings ?? e.travelEarnings ?? e.TravelEarnings ?? 0);
+
+          // Recalculate if zero (missing or not yet computed)
           if (workEarnings === 0 && hours > 0 && staffMember?.rates) {
             const rate = getHourlyRate(staffMember, shiftType, date, isPublicHoliday);
             workEarnings = hours * rate;
@@ -358,25 +372,24 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
           }
 
           return {
-            // Coerce all IDs to strings — Google Sheets may return numbers
             id: String(e.id ?? e.ID ?? Date.now()),
-            date: date,
-            staffId: String(e.staffId ?? e.StaffID ?? ''),
-            staffName: e.staffName || e.StaffName || staffMember?.name || '',
-            clientId: String(e.clientId ?? e.ClientID ?? ''),
-            clientName: e.clientName || e.ClientName || '',
-            serviceType: e.serviceType || e.ServiceType || '',
+            date,
+            staffId,
+            staffName:   e.staffname   || e.staffName   || e.StaffName   || staffMember?.name || '',
+            clientId,
+            clientName:  e.clientname  || e.clientName  || e.ClientName  || '',
+            serviceType: e.servicetype || e.serviceType || e.ServiceType || '',
             shiftType: shiftType as 'day' | 'evening' | 'night' | 'sleepover',
-            location: e.location || e.Location || 'Community',
-            startTime: e.startTime || e.StartTime || '09:00',
-            endTime: e.endTime || e.EndTime || '17:00',
-            hours: hours,
-            km: km,
-            workEarnings: workEarnings,
-            travelEarnings: travelEarnings,
+            location:  e.location  || e.Location  || 'Community',
+            startTime: e.starttime || e.startTime || e.StartTime || '09:00',
+            endTime:   e.endtime   || e.endTime   || e.EndTime   || '17:00',
+            hours,
+            km,
+            workEarnings,
+            travelEarnings,
             totalEarnings: workEarnings + travelEarnings,
-            isPublicHoliday: isPublicHoliday,
-            notes: e.notes || e.Notes || '',
+            isPublicHoliday,
+            notes:  e.notes  || e.Notes  || '',
             status: (e.status || e.Status || 'pending') as 'pending' | 'approved' | 'rejected',
             syncedToCloud: true
           };

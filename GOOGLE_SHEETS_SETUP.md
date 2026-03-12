@@ -124,12 +124,13 @@ function syncTimesheets(ss, entries) {
   const sheet = ss.getSheetByName('Timesheets');
   if (!sheet) return;
 
-  // Always write headers in row 1 so readSheet can map all fields correctly
+  // Always write all-lowercase headers so readSheet returns keys that
+  // exactly match what the app expects (readSheet lowercases all headers anyway)
   sheet.getRange(1, 1, 1, 19).setValues([[
-    'id','date','staffId','staffName','clientId','clientName',
-    'serviceType','shiftType','location','startTime','endTime',
-    'hours','km','workEarnings','travelEarnings','totalEarnings',
-    'isPublicHoliday','notes','status'
+    'id','date','staffid','staffname','clientid','clientname',
+    'servicetype','shifttype','location','starttime','endtime',
+    'hours','km','workearnings','travelearnings','totalearnings',
+    'ispublicholiday','notes','status'
   ]]);
 
   if (sheet.getLastRow() > 1) {
