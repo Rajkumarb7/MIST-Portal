@@ -55,9 +55,15 @@ export const storage = {
     return []; // No hardcoded defaults — new devices start empty and pull from Cloud
   },
   saveClients: (clients: Client[]) => {
-    // Only save id and name for clients
-    const sanitized = clients.map(c => ({ id: c.id, name: c.name }));
-    localStorage.setItem(KEYS.CLIENTS, JSON.stringify(sanitized));
+    // Deduplicate by name (case-insensitive) then save id + name only
+    const seen = new Set<string>();
+    const deduped = clients.filter(c => {
+      const key = (c.name || '').toLowerCase().trim();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    localStorage.setItem(KEYS.CLIENTS, JSON.stringify(deduped.map(c => ({ id: c.id, name: c.name }))));
   },
 
   getEntries: (): TimesheetEntry[] => {

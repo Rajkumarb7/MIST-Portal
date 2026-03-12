@@ -270,26 +270,41 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
 
       // --- Load Staff from cloud ---
       if (data.staff && data.staff.length > 0) {
-        const loadedStaff: Staff[] = data.staff.map((s: any) => ({
-          // Coerce to string — Google Sheets returns numeric IDs as JS numbers
-          id: String(s.id ?? s.ID ?? ''),
-          name: s.name || s.Name,
-          role: s.role || s.Role || 'Support Worker',
-          email: s.email || s.Email || '',
-          phone: s.phone || s.Phone || '',
-          startDate: s.startdate || s.startDate || s.StartDate || '',
-          active: s.active === 'Yes' || s.active === true || s.Active === 'Yes',
-          rates: {
-            day: Number(s.dayrate || s.day || s.DayRate || 65),
-            evening: Number(s.eveningrate || s.evening || s.EveningRate || 72),
-            night: Number(s.nightrate || s.night || s.NightRate || 85),
-            sleepover: Number(s.sleepoverrate || s.sleepover || s.SleepoverRate || 250),
-            saturday: Number(s.saturdayrate || s.saturday || s.SaturdayRate || 95),
-            sunday: Number(s.sundayrate || s.sunday || s.SundayRate || 125),
-            publicHoliday: Number(s.holidayrate || s.publicholiday || s.PublicHolidayRate || 160),
-            km: Number(s.kmrate || s.km || s.KMRate || 0.96)
-          }
-        }));
+        // Build a map of existing local staff so we can protect custom rates
+        const existingStaffMap = new Map(storage.getStaff().map(s => [s.id, s]));
+
+        const loadedStaff: Staff[] = data.staff.map((s: any) => {
+          const id = String(s.id ?? s.ID ?? '');
+          const cloudRates = {
+            day:          Number(s.dayrate || s.day || s.DayRate) || 65,
+            evening:      Number(s.eveningrate || s.evening || s.EveningRate) || 72,
+            night:        Number(s.nightrate || s.night || s.NightRate) || 85,
+            sleepover:    Number(s.sleepoverrate || s.sleepover || s.SleepoverRate) || 250,
+            saturday:     Number(s.saturdayrate || s.saturday || s.SaturdayRate) || 95,
+            sunday:       Number(s.sundayrate || s.sunday || s.SundayRate) || 125,
+            publicHoliday:Number(s.holidayrate || s.publicholiday || s.PublicHolidayRate) || 160,
+            km:           Number(s.kmrate || s.km || s.KMRate) || 0.96
+          };
+          // If all rates came back as exactly the defaults, the sheet likely has no rate
+          // headers yet (pre-v3.2 Apps Script). Preserve the locally saved custom rates.
+          const allDefaults =
+            cloudRates.day === 65 && cloudRates.evening === 72 && cloudRates.night === 85 &&
+            cloudRates.sleepover === 250 && cloudRates.saturday === 95 &&
+            cloudRates.sunday === 125 && cloudRates.publicHoliday === 160 && cloudRates.km === 0.96;
+          const local = existingStaffMap.get(id);
+          const rates = (allDefaults && local?.rates) ? local.rates : cloudRates;
+
+          return {
+            id,
+            name: s.name || s.Name,
+            role: s.role || s.Role || 'Support Worker',
+            email: s.email || s.Email || '',
+            phone: s.phone || s.Phone || '',
+            startDate: s.startdate || s.startDate || s.StartDate || '',
+            active: s.active === 'Yes' || s.active === true || s.Active === 'Yes',
+            rates
+          };
+        });
         storage.saveStaff(loadedStaff);
         if (onUpdateStaff) onUpdateStaff(loadedStaff);
         messages.push(`${loadedStaff.length} staff`);
