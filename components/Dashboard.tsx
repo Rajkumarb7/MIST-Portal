@@ -167,7 +167,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const key = `${year}-${month}`;
-      return { key, name: d.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' }) };
+      const monthStr = d.toLocaleDateString('en-AU', { month: 'short' });
+      const yearStr = d.toLocaleDateString('en-AU', { year: '2-digit' });
+      return { key, name: `${monthStr} '${yearStr}` };
     });
 
     last6Months.forEach(m => months[m.key] = 0);

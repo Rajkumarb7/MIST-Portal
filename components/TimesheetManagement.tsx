@@ -812,7 +812,7 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
                 <th className="px-6 py-5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody key={`${clientFilter}-${statusFilter}-${dateFilter}-${customFromDate}-${customToDate}-${filtered.length}`} className="divide-y divide-slate-100 dark:divide-slate-800">
               {filtered.map(entry => (
                 <tr key={entry.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-6 py-4">
