@@ -124,15 +124,6 @@ function syncTimesheets(ss, entries) {
   const sheet = ss.getSheetByName('Timesheets');
   if (!sheet) return;
 
-  // Always write all-lowercase headers so readSheet returns keys that
-  // exactly match what the app expects (readSheet lowercases all headers anyway)
-  sheet.getRange(1, 1, 1, 19).setValues([[
-    'id','date','staffid','staffname','clientid','clientname',
-    'servicetype','shifttype','location','starttime','endtime',
-    'hours','km','workearnings','travelearnings','totalearnings',
-    'ispublicholiday','notes','status'
-  ]]);
-
   if (sheet.getLastRow() > 1) {
     sheet.deleteRows(2, sheet.getLastRow() - 1);
   }
@@ -169,14 +160,6 @@ function syncStaff(ss, staffList) {
   const sheet = ss.getSheetByName('Staff');
   if (!sheet) return;
 
-  // Always write headers in row 1 — this is critical so readSheet returns
-  // dayrate, eveningrate etc. fields that the app uses to read back rates
-  sheet.getRange(1, 1, 1, 15).setValues([[
-    'id','name','role','email','phone','startDate','active',
-    'dayrate','eveningrate','nightrate','sleepoverrate',
-    'saturdayrate','sundayrate','holidayrate','kmrate'
-  ]]);
-
   if (sheet.getLastRow() > 1) {
     sheet.deleteRows(2, sheet.getLastRow() - 1);
   }
@@ -207,19 +190,11 @@ function syncClients(ss, clientList) {
   const sheet = ss.getSheetByName('Clients');
   if (!sheet) return;
 
-  // Always write headers in row 1
-  sheet.getRange(1, 1, 1, 2).setValues([['id','name']]);
-
   if (sheet.getLastRow() > 1) {
     sheet.deleteRows(2, sheet.getLastRow() - 1);
   }
 
-  // Deduplicate by name before writing (prevents double-Patrick etc.)
-  var seen = {};
   clientList.forEach(function(client) {
-    var key = String(client.name || '').toLowerCase().trim();
-    if (!key || seen[key]) return;
-    seen[key] = true;
     sheet.appendRow([
       String(client.id || ''),
       String(client.name || '')

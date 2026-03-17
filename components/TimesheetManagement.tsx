@@ -27,6 +27,7 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
   const [customFromDate, setCustomFromDate] = useState('');
   const [customToDate, setCustomToDate] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [clientFilter, setClientFilter] = useState('');
 
   // Helper to get fortnight dates
   const getFortnightDates = (weeksBack: number) => {
@@ -449,9 +450,12 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
       // Status filter
       if (statusFilter !== 'all' && e.status !== statusFilter) return false;
 
+      // Client filter
+      if (clientFilter && e.clientId !== clientFilter) return false;
+
       return true;
     }).sort((a, b) => b.date.localeCompare(a.date));
-  }, [entries, user, dateFilter, customFromDate, customToDate, statusFilter]);
+  }, [entries, user, dateFilter, customFromDate, customToDate, statusFilter, clientFilter]);
 
   // Time input component for better UX
   const TimeInput = ({ value, onChange, label }: { value: string; onChange: (val: string) => void; label: string }) => {
@@ -584,6 +588,20 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
             )}
 
             <div className="min-w-[150px]">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Client</label>
+              <select
+                className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-transparent focus:border-mistTeal outline-none font-bold text-sm"
+                value={clientFilter}
+                onChange={e => setClientFilter(e.target.value)}
+              >
+                <option value="">All Clients</option>
+                {[...clients].sort((a, b) => a.name.localeCompare(b.name)).map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="min-w-[150px]">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Status</label>
               <select
                 className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-transparent focus:border-mistTeal outline-none font-bold text-sm"
@@ -598,7 +616,7 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
             </div>
 
             <button
-              onClick={() => { setDateFilter('all'); setStatusFilter('all'); setCustomFromDate(''); setCustomToDate(''); }}
+              onClick={() => { setDateFilter('all'); setStatusFilter('all'); setClientFilter(''); setCustomFromDate(''); setCustomToDate(''); }}
               className="px-4 py-3 text-xs font-bold text-slate-500 hover:text-mistTeal transition-colors"
             >
               Clear Filters

@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { User, UserRole, TimesheetEntry, Client, Staff } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { FileDown, Calendar, ArrowRight, MapPin, X, Mail, FileSpreadsheet, Download } from 'lucide-react';
+import { FileDown, Calendar, ArrowRight, MapPin, X, Mail, FileSpreadsheet, Download, Filter } from 'lucide-react';
 import { exportToCSV } from '../utils/csvExport';
 import { syncService } from '../services/sync';
 
@@ -13,9 +13,30 @@ interface ReportsProps {
   staff: Staff[];
 }
 
+// Helper to get fortnight boundaries
+const getFortnightRange = (weeksBack: number = 0): { start: string; end: string } => {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const thisMonday = new Date(now);
+  thisMonday.setDate(now.getDate() - daysToMonday);
+  thisMonday.setHours(0, 0, 0, 0);
+  const weekNumber = Math.floor((thisMonday.getTime() - new Date(thisMonday.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+  const isSecondWeek = weekNumber % 2 === 1;
+  const start = new Date(thisMonday);
+  if (isSecondWeek) start.setDate(start.getDate() - 7);
+  start.setDate(start.getDate() - weeksBack * 14);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 13);
+  return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+};
+
 const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
+  const [exportDateRange, setExportDateRange] = useState('all');
+  const [exportCustomStart, setExportCustomStart] = useState('');
+  const [exportCustomEnd, setExportCustomEnd] = useState('');
 
   const filteredEntries = useMemo(() => {
     if (user.role === UserRole.MANAGER) return entries;
@@ -24,8 +45,31 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
     return [];
   }, [user, entries]);
 
+  // Entries filtered by the export date range selector
+  const exportEntries = useMemo(() => {
+    if (exportDateRange === 'all') return filteredEntries;
+    if (exportDateRange === 'fortnight') {
+      const { start, end } = getFortnightRange(0);
+      return filteredEntries.filter(e => e.date >= start && e.date <= end);
+    }
+    if (exportDateRange === 'lastfortnight') {
+      const { start, end } = getFortnightRange(1);
+      return filteredEntries.filter(e => e.date >= start && e.date <= end);
+    }
+    if (exportDateRange === 'month') {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 30);
+      const from = cutoff.toISOString().split('T')[0];
+      return filteredEntries.filter(e => e.date >= from);
+    }
+    if (exportDateRange === 'custom' && exportCustomStart && exportCustomEnd) {
+      return filteredEntries.filter(e => e.date >= exportCustomStart && e.date <= exportCustomEnd);
+    }
+    return filteredEntries;
+  }, [filteredEntries, exportDateRange, exportCustomStart, exportCustomEnd]);
+
   const handleExportCSV = () => {
-    const exportData = filteredEntries.map(e => ({
+    const exportData = exportEntries.map(e => ({
       Date: e.date,
       Staff: e.staffName,
       Client: e.clientName,
@@ -43,7 +87,12 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
       Status: e.status,
       Notes: e.notes
     }));
-    exportToCSV(exportData, `MIST_Report_${new Date().toISOString().split('T')[0]}`);
+    const rangeLabel = exportDateRange === 'all' ? 'AllTime' :
+      exportDateRange === 'fortnight' ? 'CurrentFortnight' :
+      exportDateRange === 'lastfortnight' ? 'LastFortnight' :
+      exportDateRange === 'month' ? 'Last30Days' :
+      exportDateRange === 'custom' ? `${exportCustomStart}_to_${exportCustomEnd}` : '';
+    exportToCSV(exportData, `MIST_Report_${rangeLabel}_${new Date().toISOString().split('T')[0]}`);
     setExportSuccess('CSV file downloaded successfully!');
     setTimeout(() => {
       setExportSuccess(null);
@@ -53,7 +102,7 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
 
   const handleExportEmail = () => {
     const adminEmail = 'admin@mistau.com'; // Default admin email
-    const emailLink = syncService.generateEmailReport(adminEmail, filteredEntries);
+    const emailLink = syncService.generateEmailReport(adminEmail, exportEntries);
     window.location.href = emailLink;
     setExportSuccess('Email client opened!');
     setTimeout(() => {
@@ -220,6 +269,46 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
                 </div>
               ) : (
                 <>
+                  {/* Date range selector */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                      <Filter size={10} /> Date Range
+                    </label>
+                    <select
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-transparent focus:border-accent outline-none font-bold text-sm"
+                      value={exportDateRange}
+                      onChange={e => setExportDateRange(e.target.value)}
+                    >
+                      <option value="all">Full Report (All Time)</option>
+                      <option value="fortnight">Current Fortnight</option>
+                      <option value="lastfortnight">Last Fortnight</option>
+                      <option value="month">Last 30 Days</option>
+                      <option value="custom">Custom Date Range</option>
+                    </select>
+                    {exportDateRange === 'custom' && (
+                      <div className="flex gap-2 mt-2">
+                        <div className="flex-1">
+                          <label className="text-[10px] font-bold text-slate-400 block mb-1">From</label>
+                          <input
+                            type="date"
+                            className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-transparent focus:border-accent outline-none font-bold text-sm"
+                            value={exportCustomStart}
+                            onChange={e => setExportCustomStart(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[10px] font-bold text-slate-400 block mb-1">To</label>
+                          <input
+                            type="date"
+                            className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-transparent focus:border-accent outline-none font-bold text-sm"
+                            value={exportCustomEnd}
+                            onChange={e => setExportCustomEnd(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <button
                     onClick={handleExportCSV}
                     className="w-full p-5 bg-slate-50 dark:bg-slate-800 hover:bg-accent hover:text-white rounded-2xl flex items-center gap-4 transition-all group"
@@ -248,7 +337,7 @@ const Reports: React.FC<ReportsProps> = ({ user, entries, clients, staff }) => {
 
                   <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
                     <p className="text-xs text-slate-400 text-center">
-                      Exporting {filteredEntries.length} timesheet entries
+                      Exporting {exportEntries.length} of {filteredEntries.length} timesheet entries
                     </p>
                   </div>
                 </>

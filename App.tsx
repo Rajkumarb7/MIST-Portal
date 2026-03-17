@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { User, UserRole, AuthState, Staff, Client, TimesheetEntry } from './types';
 import { storage } from './services/storage';
 import { syncService } from './services/sync';
@@ -46,14 +46,14 @@ const App: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
 
-  // Sync status — updated only by explicit manual Push (in TimesheetManagement)
+  // Sync status
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
   // Get webhook URL from localStorage
-  const getWebhookUrl = () => localStorage.getItem('mist_webhook_url');
+  const getWebhookUrl = useCallback(() => localStorage.getItem('mist_webhook_url'), []);
 
-  // Load initial data from localStorage
+  // Load initial data
   useEffect(() => {
     setStaff(storage.getStaff());
     setClients(storage.getClients());
@@ -61,66 +61,32 @@ const App: React.FC = () => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
-  // On startup: pull client list from cloud (always fresh).
-  // Staff (including rates) are only loaded from cloud on a NEW device (empty localStorage).
-  // This prevents rates set by the manager from being overwritten on every page refresh.
-  // To force-refresh staff data on an existing device, use the "Pull from Cloud" button.
+  // Auto-sync when data changes
   useEffect(() => {
-    const webhookUrl = localStorage.getItem('mist_webhook_url');
-    if (!webhookUrl) return;
+    const webhookUrl = getWebhookUrl();
+    if (!webhookUrl || (staff.length === 0 && clients.length === 0 && entries.length === 0)) {
+      return; // Don't sync if no webhook or no data
+    }
 
-    // Check NOW (before async pull) whether this device already has local staff data
-    const hasLocalStaff = storage.getStaff().length > 0;
+    setSyncStatus('syncing');
 
-    syncService.loadFromCloud(webhookUrl)
-      .then(data => {
-        if (!data) return;
+    // Use debounced auto-sync
+    const syncTimeout = setTimeout(async () => {
+      try {
+        await syncService.syncAllData(webhookUrl, { timesheets: entries, staff, clients });
+        setSyncStatus('synced');
+        setLastSyncTime(new Date().toLocaleTimeString());
+        // Reset to idle after 3 seconds
+        setTimeout(() => setSyncStatus('idle'), 3000);
+      } catch (error) {
+        console.error('Auto-sync failed:', error);
+        setSyncStatus('error');
+        setTimeout(() => setSyncStatus('idle'), 5000);
+      }
+    }, 2000); // 2 second debounce
 
-        // Only overwrite staff from cloud on a fresh device — preserves manager-set rates
-        if (!hasLocalStaff && data.staff && (data.staff as any[]).length > 0) {
-          const loadedStaff: Staff[] = (data.staff as any[]).map((s: any) => ({
-            id: String(s.id ?? s.ID ?? ''),
-            name: s.name || s.Name || '',
-            role: s.role || s.Role || 'Support Worker',
-            email: s.email || s.Email || '',
-            phone: s.phone || s.Phone || '',
-            startDate: s.startdate || s.startDate || '',
-            active: s.active === 'Yes' || s.active === true,
-            rates: {
-              day:          Number(s.dayrate)        || 65,
-              evening:      Number(s.eveningrate)    || 72,
-              night:        Number(s.nightrate)      || 85,
-              sleepover:    Number(s.sleepoverrate)  || 250,
-              saturday:     Number(s.saturdayrate)   || 95,
-              sunday:       Number(s.sundayrate)     || 125,
-              publicHoliday:Number(s.holidayrate)    || 160,
-              km:           Number(s.kmrate)         || 0.96,
-            }
-          })).filter((s: any) => s.id && s.name);
-
-          if (loadedStaff.length > 0) {
-            storage.saveStaff(loadedStaff);
-            setStaff(loadedStaff);
-          }
-        }
-
-        // Always refresh client list from cloud (shared across all devices)
-        if (data.clients && (data.clients as any[]).length > 0) {
-          const loadedClients: Client[] = (data.clients as any[]).map((c: any) => ({
-            id: String(c.id ?? c.ID ?? ''),
-            name: String(c.name || c.Name || '')
-          })).filter((c: any) => c.id && c.name);
-
-          if (loadedClients.length > 0) {
-            storage.saveClients(loadedClients);
-            setClients(loadedClients);
-          }
-        }
-      })
-      .catch(() => { /* startup pull failure is non-fatal — localStorage data is used */ });
-  }, []); // runs once on mount only
-  // NOTE: Auto-sync removed. Push is explicit only — "Push to Cloud" button in Shift Logs.
-  // Staff rates are preserved locally; use "Pull from Cloud" to force-refresh from sheet.
+    return () => clearTimeout(syncTimeout);
+  }, [staff, clients, entries, getWebhookUrl]);
 
   const handleLogin = (role: UserRole, id: string, name: string) => {
     setAuthState({
@@ -296,12 +262,7 @@ const App: React.FC = () => {
         <div className="p-4 md:p-10 max-w-7xl mx-auto w-full">
           {activeTab === 'dashboard' && <Dashboard user={authState.user!} entries={entries} clients={clients} staff={staff} onUpdateEntries={(e) => saveData(undefined, undefined, e)} />}
           {activeTab === 'staff' && authState.user?.role === UserRole.MANAGER && (
-            <StaffManagement
-              staff={staff}
-              onUpdate={(s) => saveData(s)}
-              entries={entries}
-              onUpdateEntries={(e) => saveData(undefined, undefined, e)}
-            />
+            <StaffManagement staff={staff} onUpdate={(s) => saveData(s)} />
           )}
           {activeTab === 'clients' && authState.user?.role === UserRole.MANAGER && (
             <ClientManagement clients={clients} onUpdate={(c) => saveData(undefined, c)} />

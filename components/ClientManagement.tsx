@@ -50,14 +50,14 @@ const ClientManagement: React.FC<ClientManagementProps> = ({ clients, onUpdate }
   console.log('[ClientManagement] Clients length:', clients.length);
   console.log('[ClientManagement] First client:', clients[0]);
 
-  // Safe filtering with null/undefined checks
+  // Safe filtering with null/undefined checks, sorted alphabetically
   const filtered = clients.filter(c => {
     if (!c || !c.id || !c.name || typeof c.name !== 'string') {
       console.warn('[ClientManagement] Invalid client (skipped):', c);
       return false;
     }
     return c.name.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  }).sort((a, b) => a.name.localeCompare(b.name));
 
   console.log('[ClientManagement] Filtered clients:', filtered.length);
 

@@ -161,8 +161,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, entries, clients, staff, on
     const months: Record<string, number> = {};
     const last6Months = Array.from({length: 6}).map((_, i) => {
       const d = new Date();
+      d.setDate(1); // anchor to day 1 to avoid month-overflow when subtracting months
       d.setMonth(d.getMonth() - (5 - i));
-      return { key: d.toISOString().slice(0, 7), name: d.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' }) };
+      // Use local-time year/month so Australian dates aren't shifted to the prior month
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const key = `${year}-${month}`;
+      return { key, name: d.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' }) };
     });
 
     last6Months.forEach(m => months[m.key] = 0);

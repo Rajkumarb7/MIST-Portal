@@ -25,15 +25,15 @@ export const storage = {
     const data = localStorage.getItem(KEYS.STAFF);
     if (data) {
       // Ensure all staff have rates (migration for existing data)
-      // Also ensure id is always a string — Google Sheets may return numeric IDs
       const staff = JSON.parse(data);
       return staff.map((s: Staff) => ({
         ...s,
-        id: String(s.id),
         rates: s.rates || DEFAULT_RATES
       }));
     }
-    return []; // No hardcoded defaults — new devices start empty and pull from Cloud
+    return [
+      { id: '1', name: 'Raj Kumar', role: 'team-leader', email: 'raj@example.com', phone: '0400000000', startDate: '2024-01-01', active: true, rates: DEFAULT_RATES }
+    ];
   },
   saveStaff: (staff: Staff[]) => localStorage.setItem(KEYS.STAFF, JSON.stringify(staff)),
 
@@ -43,8 +43,7 @@ export const storage = {
       // Sanitize client data - only keep id and name (rates were moved to staff)
       const clients = JSON.parse(data);
       return clients.map((c: any) => ({
-        // Always stringify id — Google Sheets returns numeric IDs as JS numbers
-        id: String(c.id ?? Date.now()),
+        id: c.id || String(Date.now()),
         name: String(c.name || 'Unknown Client')
       })).filter((c: Client) => {
         // Filter out clients with numeric-only names (likely corrupted rate data)
@@ -52,47 +51,19 @@ export const storage = {
         return c.id && c.name && c.name !== 'Unknown Client' && !isNumericOnly;
       });
     }
-    return []; // No hardcoded defaults — new devices start empty and pull from Cloud
+    return [
+      { id: 'c1', name: 'John Doe' }
+    ];
   },
   saveClients: (clients: Client[]) => {
-    // Deduplicate by name (case-insensitive) then save id + name only
-    const seen = new Set<string>();
-    const deduped = clients.filter(c => {
-      const key = (c.name || '').toLowerCase().trim();
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    localStorage.setItem(KEYS.CLIENTS, JSON.stringify(deduped.map(c => ({ id: c.id, name: c.name }))));
+    // Only save id and name for clients
+    const sanitized = clients.map(c => ({ id: c.id, name: c.name }));
+    localStorage.setItem(KEYS.CLIENTS, JSON.stringify(sanitized));
   },
 
   getEntries: (): TimesheetEntry[] => {
     const data = localStorage.getItem(KEYS.ENTRIES);
-    if (!data) return [];
-    const raw: any[] = JSON.parse(data);
-
-    // Normalise dates and strip blank/corrupt rows (e.g. from empty Google Sheets rows)
-    const cleaned = raw
-      .map((e: any) => {
-        const rawDate = String(e.date || '');
-        const date = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.substring(0, 10);
-        return { ...e, date: date || '' };
-      })
-      .filter((e: any) => {
-        // Must have a valid YYYY-MM-DD date
-        if (!e.date || e.date.length < 8) return false;
-        if (isNaN(new Date(e.date).getTime())) return false;
-        // Must have a meaningful ID and at least a staff or client reference
-        if (!e.id) return false;
-        return true;
-      });
-
-    // Persist the cleaned list so junk rows don't come back on next load
-    if (cleaned.length !== raw.length) {
-      localStorage.setItem(KEYS.ENTRIES, JSON.stringify(cleaned));
-    }
-
-    return cleaned as TimesheetEntry[];
+    return data ? JSON.parse(data) : [];
   },
   saveEntries: (entries: TimesheetEntry[]) => localStorage.setItem(KEYS.ENTRIES, JSON.stringify(entries)),
 

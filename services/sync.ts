@@ -63,65 +63,58 @@ export const syncService = {
   },
 
   /**
-   * Sync all data to Google Sheets.
-   * Uses fetch with no-cors mode — works reliably on all browsers including mobile Safari.
-   * Falls back to hidden iframe form submission if fetch throws (very rare).
+   * Sync all data to Google Sheets using hidden iframe form submission
    */
   syncAllData: async (webhookUrl: string, data: SyncData) => {
     if (!webhookUrl) throw new Error("Webhook URL not configured");
 
-    const payload = JSON.stringify({
-      timestamp: new Date().toISOString(),
-      type: 'FULL_SYNC',
-      timesheets: data.timesheets,
-      staff: data.staff,
-      clients: data.clients
+    return new Promise((resolve) => {
+      const payload = {
+        timestamp: new Date().toISOString(),
+        type: 'FULL_SYNC',
+        timesheets: data.timesheets,
+        staff: data.staff,
+        clients: data.clients
+      };
+
+      // Create hidden iframe for form submission (bypasses CORS)
+      const iframeName = 'mist_sync_frame_' + Date.now();
+      const iframe = document.createElement('iframe');
+      iframe.name = iframeName;
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+
+      // Create form
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = webhookUrl;
+      form.target = iframeName;
+      form.style.display = 'none';
+
+      // Add data as hidden input
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'data';
+      input.value = JSON.stringify(payload);
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+
+      // Submit form
+      form.submit();
+
+      // With cross-origin iframes, we can't detect completion
+      // So we assume success after a short delay and clean up
+      setTimeout(() => {
+        try {
+          if (document.body.contains(form)) document.body.removeChild(form);
+          if (document.body.contains(iframe)) document.body.removeChild(iframe);
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        resolve(true);
+      }, 1500);
     });
-
-    try {
-      // no-cors sends a simple cross-origin POST — no preflight, works on all browsers.
-      // Response is opaque (unreadable) but the Apps Script receives and processes the body.
-      await fetch(webhookUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: payload
-      });
-    } catch {
-      // Fallback: hidden iframe form submission (desktop browsers, legacy)
-      await new Promise<void>((resolve) => {
-        const iframeName = 'mist_sync_' + Date.now();
-        const iframe = document.createElement('iframe');
-        iframe.name = iframeName;
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = webhookUrl;
-        form.target = iframeName;
-        form.style.display = 'none';
-
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'data';
-        input.value = payload;
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-
-        setTimeout(() => {
-          try {
-            if (document.body.contains(form)) document.body.removeChild(form);
-            if (document.body.contains(iframe)) document.body.removeChild(iframe);
-          } catch { /* ignore cleanup errors */ }
-          resolve();
-        }, 4000); // longer timeout for slow mobile connections
-      });
-    }
-
-    // Brief pause so the Apps Script can finish writing before any subsequent read
-    await new Promise(r => setTimeout(r, 2000));
   },
 
   /**

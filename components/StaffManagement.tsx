@@ -103,7 +103,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onUpdate, entr
     setFormData({ name: '', role: 'support-worker', email: '', phone: '', startDate: new Date().toISOString().split('T')[0], active: true, rates: DEFAULT_RATES });
   };
 
-  const filtered = staff.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filtered = staff
+    .filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Rate labels for display
   const rateLabels: Record<keyof Rates, string> = {
