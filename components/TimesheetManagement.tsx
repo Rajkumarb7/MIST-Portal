@@ -450,12 +450,18 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
       // Status filter
       if (statusFilter !== 'all' && e.status !== statusFilter) return false;
 
-      // Client filter
-      if (clientFilter && e.clientId !== clientFilter) return false;
+      // Client filter — match by clientId (primary) OR by clientName (fallback for entries
+      // whose clientId got out of sync with the current client list after a re-sync).
+      if (clientFilter) {
+        const selectedClient = clients.find(c => c.id === clientFilter);
+        const matchesById   = e.clientId === clientFilter;
+        const matchesByName = selectedClient != null && e.clientName === selectedClient.name;
+        if (!matchesById && !matchesByName) return false;
+      }
 
       return true;
     }).sort((a, b) => b.date.localeCompare(a.date));
-  }, [entries, user, dateFilter, customFromDate, customToDate, statusFilter, clientFilter]);
+  }, [entries, clients, user, dateFilter, customFromDate, customToDate, statusFilter, clientFilter]);
 
   // Time input component for better UX
   const TimeInput = ({ value, onChange, label }: { value: string; onChange: (val: string) => void; label: string }) => {
