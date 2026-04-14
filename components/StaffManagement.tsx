@@ -14,14 +14,18 @@ interface StaffManagementProps {
 // Recalculate hourly rate from rates object given shift context
 const calcRate = (rates: Rates, shiftType: string, dateStr: string, isPublicHoliday?: boolean): number => {
   if (!rates) return 65;
-  if (isPublicHoliday) return rates.publicHoliday || 160;
   const day = new Date(dateStr).getDay();
+  // Sleepover is a flat overnight rate — not doubled on public holidays
   if (shiftType === 'sleepover') return rates.sleepover || 250;
-  if (day === 0) return rates.sunday || 125;
-  if (day === 6) return rates.saturday || 95;
-  if (shiftType === 'night') return rates.night || 85;
-  if (shiftType === 'evening') return rates.evening || 72;
-  return rates.day || 65;
+  // Determine the base rate for this day/shift
+  let baseRate: number;
+  if (day === 0) baseRate = rates.sunday || 125;
+  else if (day === 6) baseRate = rates.saturday || 95;
+  else if (shiftType === 'night') baseRate = rates.night || 85;
+  else if (shiftType === 'evening') baseRate = rates.evening || 72;
+  else baseRate = rates.day || 65;
+  // Public Holiday = 2× the applicable base rate
+  return isPublicHoliday ? baseRate * 2 : baseRate;
 };
 
 // Recalculate hours from 24h time strings
@@ -312,30 +316,47 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onUpdate, entr
                 <p className="text-xs text-slate-500">Set individual pay rates for this staff member based on their role and experience.</p>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {(Object.keys(DEFAULT_RATES) as Array<keyof Rates>).map((key) => (
-                    <div key={key} className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-                        {rateLabels[key]}
-                      </label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-3.5 text-slate-400" size={14} />
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="w-full pl-8 pr-2 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-transparent focus:border-mistTeal outline-none text-sm font-bold"
-                          value={isAdding ? (formData.rates?.[key] ?? DEFAULT_RATES[key]) : (editingStaff?.rates?.[key] ?? DEFAULT_RATES[key])}
-                          onChange={e => {
-                            const val = parseFloat(e.target.value) || 0;
-                            if (isAdding) {
-                              setFormData({...formData, rates: { ...(formData.rates || DEFAULT_RATES), [key]: val }});
-                            } else {
-                              setEditingStaff({...editingStaff!, rates: { ...(editingStaff!.rates || DEFAULT_RATES), [key]: val }});
-                            }
-                          }}
-                        />
+                  {(Object.keys(DEFAULT_RATES) as Array<keyof Rates>).map((key) => {
+                    // Public Holiday is now always auto-calculated as 2× the applicable day/shift rate
+                    if (key === 'publicHoliday') {
+                      return (
+                        <div key={key} className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+                            Public Holiday
+                          </label>
+                          <div className="w-full px-3 py-3 bg-mistTeal/10 border border-mistTeal/30 rounded-xl flex items-center gap-1.5">
+                            <span className="text-sm font-black text-mistTeal">2×</span>
+                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">applicable rate</span>
+                          </div>
+                          <p className="text-[9px] text-slate-400 leading-tight">e.g. Sat PH = 2× Saturday rate</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={key} className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+                          {rateLabels[key]}
+                        </label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-3.5 text-slate-400" size={14} />
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="w-full pl-8 pr-2 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-transparent focus:border-mistTeal outline-none text-sm font-bold"
+                            value={isAdding ? (formData.rates?.[key] ?? DEFAULT_RATES[key]) : (editingStaff?.rates?.[key] ?? DEFAULT_RATES[key])}
+                            onChange={e => {
+                              const val = parseFloat(e.target.value) || 0;
+                              if (isAdding) {
+                                setFormData({...formData, rates: { ...(formData.rates || DEFAULT_RATES), [key]: val }});
+                              } else {
+                                setEditingStaff({...editingStaff!, rates: { ...(editingStaff!.rates || DEFAULT_RATES), [key]: val }});
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 

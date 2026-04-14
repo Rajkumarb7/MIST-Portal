@@ -120,18 +120,22 @@ const TimesheetManagement: React.FC<TimesheetManagementProps> = ({ user, entries
     const rates = staffMember.rates;
     if (!rates) return 65; // Default fallback
 
-    // Public Holiday takes highest priority
-    if (isPublicHoliday) return rates.publicHoliday || 160;
-
     const date = new Date(dateStr);
     const day = date.getDay();
-    // Sleepover has a flat rate regardless of day
+
+    // Sleepover is a flat overnight rate — not affected by public holiday multiplier
     if (shift === 'sleepover') return rates.sleepover || 250;
-    if (day === 0) return rates.sunday;
-    if (day === 6) return rates.saturday;
-    if (shift === 'night') return rates.night;
-    if (shift === 'evening') return rates.evening;
-    return rates.day;
+
+    // Determine the base rate for this day/shift combination
+    let baseRate: number;
+    if (day === 0) baseRate = rates.sunday || 125;
+    else if (day === 6) baseRate = rates.saturday || 95;
+    else if (shift === 'night') baseRate = rates.night || 85;
+    else if (shift === 'evening') baseRate = rates.evening || 72;
+    else baseRate = rates.day || 65;
+
+    // Public Holiday = 2× the applicable base rate for that day/shift
+    return isPublicHoliday ? baseRate * 2 : baseRate;
   };
 
   const handleAdd = (e: React.FormEvent) => {
